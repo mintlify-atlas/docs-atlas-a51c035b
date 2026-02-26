@@ -1,0 +1,203 @@
+{
+  "projectType": "saas",
+  "projectName": "Trieve",
+  "projectDescription": "All-in-one platform for search, recommendations, RAG, and analytics offered via API",
+  "theme": "sequoia",
+  "primaryColor": "#3d1943",
+  "lightColor": null,
+  "darkColor": "#3d1943",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/datasets",
+              "concepts/chunks",
+              "concepts/groups",
+              "concepts/files",
+              "concepts/organizations"
+            ]
+          },
+          {
+            "group": "Search",
+            "pages": [
+              "search/overview",
+              "search/semantic-search",
+              "search/full-text-search",
+              "search/hybrid-search",
+              "search/filters",
+              "search/recommendations"
+            ]
+          },
+          {
+            "group": "RAG & Chat",
+            "pages": [
+              "rag/overview",
+              "rag/messages",
+              "rag/topics",
+              "rag/streaming"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "analytics/overview",
+              "analytics/ctr-data",
+              "analytics/queries",
+              "analytics/metrics"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "self-hosting/overview",
+              "self-hosting/docker-compose",
+              "self-hosting/kubernetes",
+              "self-hosting/configuration"
+            ]
+          },
+          {
+            "group": "SDKs & Tools",
+            "pages": [
+              "sdks/typescript",
+              "sdks/python",
+              "sdks/cli",
+              "sdks/integrations"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/introduction",
+              "api-reference/authentication"
+            ]
+          },
+          {
+            "group": "Chunks",
+            "pages": [
+              "api-reference/chunks/create",
+              "api-reference/chunks/update",
+              "api-reference/chunks/get",
+              "api-reference/chunks/delete",
+              "api-reference/chunks/search",
+              "api-reference/chunks/autocomplete"
+            ]
+          },
+          {
+            "group": "Groups",
+            "pages": [
+              "api-reference/groups/create",
+              "api-reference/groups/update",
+              "api-reference/groups/get",
+              "api-reference/groups/delete",
+              "api-reference/groups/search"
+            ]
+          },
+          {
+            "group": "Files",
+            "pages": [
+              "api-reference/files/upload",
+              "api-reference/files/get",
+              "api-reference/files/delete"
+            ]
+          },
+          {
+            "group": "Messages",
+            "pages": [
+              "api-reference/messages/create",
+              "api-reference/messages/list",
+              "api-reference/messages/regenerate",
+              "api-reference/messages/edit"
+            ]
+          },
+          {
+            "group": "Topics",
+            "pages": [
+              "api-reference/topics/create",
+              "api-reference/topics/get",
+              "api-reference/topics/update",
+              "api-reference/topics/delete"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "api-reference/analytics/get",
+              "api-reference/analytics/ctr",
+              "api-reference/analytics/queries"
+            ]
+          },
+          {
+            "group": "Datasets",
+            "pages": [
+              "api-reference/datasets/create",
+              "api-reference/datasets/get",
+              "api-reference/datasets/update",
+              "api-reference/datasets/delete"
+            ]
+          },
+          {
+            "group": "Organizations",
+            "pages": [
+              "api-reference/organizations/create",
+              "api-reference/organizations/get",
+              "api-reference/organizations/update",
+              "api-reference/organizations/list-users"
+            ]
+          },
+          {
+            "group": "Events",
+            "pages": [
+              "api-reference/events/get"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Semantic vector search with OpenAI/Jina embeddings",
+    "Typo-tolerant full-text/neural search with SPLADE",
+    "Sub-sentence highlighting",
+    "Recommendation engine",
+    "RAG API with topic-based memory management",
+    "Hybrid search with cross-encoder re-ranking",
+    "Recency biasing and tunable merchandising",
+    "Advanced filtering (date-range, tags, numeric)",
+    "Group-based search for file-level results",
+    "Analytics and CTR tracking",
+    "Self-hosting support (Docker, Kubernetes)",
+    "Multiple SDKs (TypeScript, Python, CLI)"
+  ],
+  "publicApiSurface": [
+    "POST /api/chunk - Create chunks",
+    "POST /api/chunk/search - Search chunks",
+    "POST /api/chunk/autocomplete - Autocomplete",
+    "POST /api/chunk_group - Create groups",
+    "POST /api/chunk_group/search - Search groups",
+    "POST /api/file - Upload files",
+    "POST /api/message - Create chat messages",
+    "POST /api/topic - Create chat topics",
+    "POST /api/analytics - Get analytics",
+    "PUT /api/analytics/ctr - Send CTR data",
+    "POST /api/dataset - Create datasets",
+    "POST /api/organization - Create organizations",
+    "GET /api/events - Get events"
+  ]
+}
