@@ -1,122 +1,188 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Trieve",
+  "theme": "sequoia",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#3d1943",
+    "light": "#3d1943",
+    "dark": "#3d1943"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/devflowinc/trieve"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/devflowinc/trieve",
+      "discord": "https://discord.gg/eBJXXZDB8z",
+      "x": "https://x.com/trieveai"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
               "quickstart",
-              "development"
+              "authentication"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/datasets",
+              "concepts/chunks",
+              "concepts/groups",
+              "concepts/files",
+              "concepts/organizations"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Search",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "search/overview",
+              "search/semantic-search",
+              "search/full-text-search",
+              "search/hybrid-search",
+              "search/filters",
+              "search/recommendations"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "RAG & Chat",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "rag/overview",
+              "rag/messages",
+              "rag/topics",
+              "rag/streaming"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "analytics/overview",
+              "analytics/ctr-data",
+              "analytics/queries",
+              "analytics/metrics"
+            ]
+          },
+          {
+            "group": "Self-Hosting",
+            "pages": [
+              "self-hosting/overview",
+              "self-hosting/docker-compose",
+              "self-hosting/kubernetes",
+              "self-hosting/configuration"
+            ]
+          },
+          {
+            "group": "SDKs & Tools",
+            "pages": [
+              "sdks/typescript",
+              "sdks/python",
+              "sdks/cli",
+              "sdks/integrations"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "API Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "api-reference/introduction",
+              "api-reference/authentication"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Chunks",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/chunks/create",
+              "api-reference/chunks/update",
+              "api-reference/chunks/get",
+              "api-reference/chunks/delete",
+              "api-reference/chunks/search",
+              "api-reference/chunks/autocomplete"
+            ]
+          },
+          {
+            "group": "Groups",
+            "pages": [
+              "api-reference/groups/create",
+              "api-reference/groups/update",
+              "api-reference/groups/get",
+              "api-reference/groups/delete",
+              "api-reference/groups/search"
+            ]
+          },
+          {
+            "group": "Files",
+            "pages": [
+              "api-reference/files/upload",
+              "api-reference/files/get",
+              "api-reference/files/delete"
+            ]
+          },
+          {
+            "group": "Messages",
+            "pages": [
+              "api-reference/messages/create",
+              "api-reference/messages/list",
+              "api-reference/messages/regenerate",
+              "api-reference/messages/edit"
+            ]
+          },
+          {
+            "group": "Topics",
+            "pages": [
+              "api-reference/topics/create",
+              "api-reference/topics/get",
+              "api-reference/topics/update",
+              "api-reference/topics/delete"
+            ]
+          },
+          {
+            "group": "Analytics",
+            "pages": [
+              "api-reference/analytics/get",
+              "api-reference/analytics/ctr",
+              "api-reference/analytics/queries"
+            ]
+          },
+          {
+            "group": "Datasets",
+            "pages": [
+              "api-reference/datasets/create",
+              "api-reference/datasets/get",
+              "api-reference/datasets/update",
+              "api-reference/datasets/delete"
+            ]
+          },
+          {
+            "group": "Organizations",
+            "pages": [
+              "api-reference/organizations/create",
+              "api-reference/organizations/get",
+              "api-reference/organizations/update",
+              "api-reference/organizations/list-users"
+            ]
+          },
+          {
+            "group": "Events",
+            "pages": [
+              "api-reference/events/get"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

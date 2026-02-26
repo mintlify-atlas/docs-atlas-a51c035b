@@ -1,0 +1,122 @@
+---
+title: 'Get All Topics for Owner'
+api: 'GET /api/topic/owner/{owner_id}'
+description: 'Get all topics belonging to a specific owner_id'
+---
+
+Get all topics belonging to an arbitrary owner_id. This is useful for managing message history and chat sessions. It is common to use a browser fingerprint or your user's id as the owner_id.
+
+## Request
+
+<ParamField path="owner_id" type="string" required>
+  The owner_id to get topics of. A common approach is to use a browser fingerprint or your user's id.
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+## Response
+
+Returns an array of Topic objects.
+
+<ResponseField name="id" type="string">
+  The unique identifier for the topic.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the topic.
+</ResponseField>
+
+<ResponseField name="owner_id" type="string">
+  The owner_id associated with this topic.
+</ResponseField>
+
+<ResponseField name="dataset_id" type="string">
+  The dataset this topic belongs to.
+</ResponseField>
+
+<ResponseField name="deleted" type="boolean">
+  Whether the topic is deleted.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the topic was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp when the topic was last updated.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "https://api.trieve.ai/api/topic/owner/user-12345" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID"
+```
+
+```typescript TypeScript
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID",
+});
+
+const topics = await trieve.getAllTopicsForOwnerId({
+  owner_id: "user-12345",
+});
+
+console.log(topics);
+```
+
+```python Python
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    dataset_id="YOUR_DATASET_ID"
+)
+
+topics = trieve.get_all_topics_for_owner_id(
+    owner_id="user-12345"
+)
+
+print(topics)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200
+[
+  {
+    "id": "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+    "name": "My First Conversation",
+    "owner_id": "user-12345",
+    "dataset_id": "d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1",
+    "deleted": false,
+    "created_at": "2021-01-01T00:00:00.000Z",
+    "updated_at": "2021-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "f4f4f4f4-f4f4-f4f4-f4f4-f4f4f4f4f4f4",
+    "name": "Technical Support Chat",
+    "owner_id": "user-12345",
+    "dataset_id": "d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1",
+    "deleted": false,
+    "created_at": "2021-01-02T00:00:00.000Z",
+    "updated_at": "2021-01-02T00:00:00.000Z"
+  }
+]
+```
+
+```json 400
+{
+  "message": "Service error relating to getting topics for the owner_id"
+}
+```
+
+</ResponseExample>

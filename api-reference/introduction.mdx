@@ -1,33 +1,305 @@
 ---
-title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+title: "API Reference"
+description: "Complete reference for the Trieve API - search, RAG, analytics, and data management"
 ---
 
+## Overview
+
+The Trieve API provides a comprehensive suite of endpoints for building search, retrieval-augmented generation (RAG), and analytics applications. This reference covers all available endpoints, request/response formats, and common patterns.
+
 <Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
+  All API requests require authentication. See the [Authentication](/api-reference/authentication) guide for setup instructions.
 </Note>
 
-## Welcome
+## Base URLs
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+Trieve provides two environments for development and production:
 
-<Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
->
-  View the OpenAPI specification file
-</Card>
+<CodeGroup>
+```bash Production
+https://api.trieve.ai
+```
 
-## Authentication
+```bash Local Development
+http://localhost:8090
+```
+</CodeGroup>
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+<Info>
+  The production API is hosted at `https://api.trieve.ai` and serves all production workloads with high availability.
+</Info>
+
+## API Categories
+
+The Trieve API is organized into functional categories:
+
+<CardGroup cols={2}>
+  <Card title="Chunks" icon="cube" href="/api-reference/chunks/create">
+    Core search and data management. Create, update, search, and recommend chunks.
+  </Card>
+  <Card title="Analytics" icon="chart-line" href="/api-reference/analytics/get">
+    Search, RAG, and recommendation analytics. Track queries, CTR, and usage.
+  </Card>
+  <Card title="Datasets" icon="database" href="/api-reference/datasets/create">
+    Configure and manage datasets containing your chunks and groups.
+  </Card>
+  <Card title="Groups" icon="folder" href="/api-reference/groups/create">
+    Organize chunks into groups like bookmark folders.
+  </Card>
+  <Card title="Files" icon="file" href="/api-reference/files/upload">
+    Upload files up to 1GB with automatic text extraction and chunking.
+  </Card>
+  <Card title="Messages & Topics" icon="comments" href="/api-reference/messages/create">
+    Chat memory and RAG conversations with LLM integration.
+  </Card>
+  <Card title="Organizations" icon="building" href="/api-reference/organizations/create">
+    Manage organizations, users, and API keys.
+  </Card>
+  <Card title="Events" icon="calendar" href="/api-reference/events/get">
+    Track and retrieve events for analytics.
+  </Card>
+</CardGroup>
+
+## Common Request Patterns
+
+### Required Headers
+
+Most endpoints require these headers:
+
+| Header | Description | Example |
+|--------|-------------|----------|
+| `Authorization` | Your API key with Bearer prefix | `Bearer tr-...` |
+| `TR-Dataset` | Dataset ID for the request (UUID) | `550e8400-e29b-41d4-a716-446655440000` |
+| `Content-Type` | Request content type | `application/json` |
+
+Some organization-level endpoints use `TR-Organization` instead of `TR-Dataset`.
+
+### API Versioning
+
+You can specify the API version using the `X-API-Version` header:
+
+```bash
+X-API-Version: V2
+```
+
+<Info>
+  V2 is the default for organizations created after July 12, 2024. Earlier organizations default to V1.
+</Info>
+
+## Search Types
+
+Trieve supports multiple search modes:
+
+<Tabs>
+  <Tab title="Hybrid">
+    Combines semantic and full-text search for best results.
+    
+    ```json
+    {
+      "query": "machine learning",
+      "search_type": "hybrid"
+    }
+    ```
+  </Tab>
+  <Tab title="Semantic">
+    Vector similarity search using embeddings.
+    
+    ```json
+    {
+      "query": "artificial intelligence concepts",
+      "search_type": "semantic"
+    }
+    ```
+  </Tab>
+  <Tab title="Full-Text">
+    Traditional keyword-based search with BM25 ranking.
+    
+    ```json
+    {
+      "query": "exact phrase match",
+      "search_type": "fulltext"
+    }
+    ```
+  </Tab>
+  <Tab title="Autocomplete">
+    Prefix-based search optimized for typeahead.
+    
+    ```json
+    {
+      "query": "mach",
+      "search_type": "autocomplete"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Filtering and Metadata
+
+All search endpoints support advanced filtering:
 
 ```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+{
+  "query": "search term",
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.category",
+        "match": ["documentation", "tutorial"]
+      }
+    ],
+    "must_not": [
+      {
+        "field": "metadata.status",
+        "match": ["archived"]
+      }
+    ],
+    "should": [
+      {
+        "field": "tag_set",
+        "match": ["featured"]
+      }
+    ]
+  },
+  "score_threshold": 0.5
+}
 ```
+
+<Tip>
+  Use `tag_set` for high-performance filtering. Use `metadata` for flexible but slower filtering.
+</Tip>
+
+## Response Formats
+
+### Standard Response
+
+Most GET and POST endpoints return JSON:
+
+```json
+{
+  "chunks": [...],
+  "total_pages": 10
+}
+```
+
+### Streaming Responses
+
+RAG endpoints support Server-Sent Events (SSE) for streaming:
+
+```typescript
+const response = await fetch("https://api.trieve.ai/api/chunk/generate", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer tr-...",
+    "TR-Dataset": "dataset-id",
+  },
+  body: JSON.stringify({
+    chunk_ids: ["chunk-1", "chunk-2"],
+    prompt: "Summarize these chunks",
+    stream_response: true
+  })
+});
+
+const reader = response.body.getReader();
+// Process streaming chunks
+```
+
+### Error Responses
+
+Errors follow a consistent format:
+
+```json
+{
+  "message": "Description of the error"
+}
+```
+
+Common HTTP status codes:
+- `400` - Bad request (invalid parameters)
+- `401` - Unauthorized (invalid or missing API key)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not found
+- `413` - Payload too large
+- `426` - Upgrade required
+
+## Rate Limiting
+
+Rate limits vary by plan and are enforced per API key. Check response headers for current limits:
+
+- `X-RateLimit-Limit` - Maximum requests allowed
+- `X-RateLimit-Remaining` - Requests remaining in current window
+- `X-RateLimit-Reset` - Time when the limit resets
+
+<Warning>
+  Exceeding rate limits returns a `429 Too Many Requests` response.
+</Warning>
+
+## Pagination
+
+Many endpoints support pagination:
+
+```json
+{
+  "page": 1,
+  "page_size": 10
+}
+```
+
+Pages are 1-indexed. Maximum page size varies by endpoint (typically 100-1000).
+
+## Bulk Operations
+
+Several endpoints support batch operations:
+
+- **Create chunks**: Up to 120 chunks per request
+- **Delete chunks**: Filter-based bulk deletion
+- **Update chunks**: Single chunk per request
+
+<Info>
+  Bulk operations return immediately with a tracking ID. Check the Events endpoint to monitor completion status.
+</Info>
+
+## Tracking IDs
+
+All resources support optional `tracking_id` fields for your own reference system:
+
+```json
+{
+  "tracking_id": "my-custom-id-123",
+  "chunk_html": "Content here..."
+}
+```
+
+Tracking IDs must be unique within a dataset and can be used instead of UUIDs in most endpoints.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api-reference/authentication">
+    Set up API keys and authentication
+  </Card>
+  <Card title="Search Chunks" icon="magnifying-glass" href="/api-reference/chunks/search">
+    Start searching your data
+  </Card>
+  <Card title="Create Chunks" icon="plus" href="/api-reference/chunks/create">
+    Add data to your dataset
+  </Card>
+  <Card title="TypeScript SDK" icon="js" href="https://ts-sdk.trieve.ai">
+    Use the official SDK
+  </Card>
+</CardGroup>
+
+## API Specification
+
+The complete OpenAPI 3.0 specification is available:
+
+<Card title="OpenAPI Specification" icon="file-code" href="https://api.trieve.ai/redoc">
+  View the full interactive API specification with ReDoc
+</Card>
+
+## Support
+
+Need help? Reach out to the team:
+
+- **Email**: [developers@trieve.ai](mailto:developers@trieve.ai)
+- **Documentation**: [docs.trieve.ai](https://docs.trieve.ai)
+- **GitHub**: [github.com/devflowinc/trieve](https://github.com/devflowinc/trieve)

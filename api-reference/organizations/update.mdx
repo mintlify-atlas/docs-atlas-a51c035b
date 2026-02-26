@@ -1,0 +1,131 @@
+---
+title: "Update Organization"
+description: "Update an organization's name or partner configuration"
+---
+
+## Endpoint
+
+<ParamField path="method" type="string" required>
+  PUT
+</ParamField>
+
+<ParamField path="url" type="string" required>
+  /api/organization
+</ParamField>
+
+## Headers
+
+<ParamField header="TR-Organization" type="string" required>
+  The organization id to use for the request
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string" optional>
+  The new name of the organization. If not provided, the name will not be updated.
+</ParamField>
+
+<ParamField body="partner_configuration" type="object" optional>
+  New details for the partnership configuration. If not provided, the partnership configuration will not be updated.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier of the organization
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Updated name of the organization
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp of the creation of the organization
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp of the last update of the organization
+</ResponseField>
+
+<ResponseField name="deleted" type="integer">
+  Flag to indicate if the organization has been deleted
+</ResponseField>
+
+<ResponseField name="registerable" type="boolean">
+  Flag to indicate whether or not new users may join the organization
+</ResponseField>
+
+<ResponseField name="partner_configuration" type="object">
+  Updated configuration of the organization for the Trieve partner program
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X PUT "https://api.trieve.ai/api/organization" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "TR-Organization: e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Organization Name"
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "<your-api-key>",
+  organizationId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+const updatedOrganization = await trieve.updateOrganization({
+  name: "Updated Organization Name",
+  partner_configuration: {
+    COMPANY_NAME: "My Company",
+    DEMO_DOMAIN: "demo.mycompany.com"
+  }
+});
+
+console.log("Updated organization:", updatedOrganization);
+```
+
+```python Python
+import requests
+
+organization_id = "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+
+response = requests.put(
+    "https://api.trieve.ai/api/organization",
+    headers={
+        "Authorization": "Bearer <your-api-key>",
+        "TR-Organization": organization_id,
+        "Content-Type": "application/json"
+    },
+    json={
+        "name": "Updated Organization Name"
+    }
+)
+
+updated_organization = response.json()
+print("Updated organization:", updated_organization)
+```
+
+</CodeGroup>
+
+## Authentication
+
+Requires authentication with an API key that has `owner` role for the specified organization.
+
+## Notes
+
+- Only the owner of the organization can update it
+- All fields in the request body are optional - only provided fields will be updated
+- The organization name will be sanitized for security
+- If no fields are provided, the organization will remain unchanged
+
+## Error Responses
+
+- `400`: Service error relating to updating the organization (e.g., invalid data, sanitization failure)

@@ -1,0 +1,480 @@
+---
+title: "Authentication"
+description: "Learn how to authenticate your API requests with Trieve"
+---
+
+## Overview
+
+Trieve uses API key authentication to secure all API requests. This guide covers how to create, manage, and use API keys to authenticate with the Trieve API.
+
+<Note>
+  All API requests must be authenticated using an API key in the `Authorization` header.
+</Note>
+
+## API Key Types
+
+Trieve supports two types of API keys:
+
+<Tabs>
+  <Tab title="Organization API Keys">
+    **Organization-level keys** provide access to all datasets within an organization.
+    
+    - Scoped to your entire organization
+    - Can be restricted to specific datasets
+    - Can have custom route permissions (scopes)
+    - Recommended for production use
+  </Tab>
+  <Tab title="User API Keys">
+    **User-level keys** are tied to individual user accounts.
+    
+    - Personal access keys for individual users
+    - Inherit user's organization permissions
+    - Useful for development and testing
+  </Tab>
+</Tabs>
+
+## Creating an API Key
+
+### From the Dashboard
+
+<Steps>
+  <Step title="Navigate to Settings">
+    Log in to [dashboard.trieve.ai](https://dashboard.trieve.ai) and go to your organization settings.
+  </Step>
+  
+  <Step title="Create New API Key">
+    Click **Create API Key** and configure:
+    - **Name**: Descriptive name (e.g., "Production API Key")
+    - **Role**: Choose access level (Read, Admin, or Owner)
+    - **Datasets** (optional): Restrict to specific datasets
+    - **Expiration** (optional): Set expiration date
+  </Step>
+  
+  <Step title="Save Your Key">
+    Copy the API key immediately - you won't see it again!
+  </Step>
+</Steps>
+
+<Warning>
+  Store your API key securely! It provides access to your Trieve resources and cannot be retrieved after creation.
+</Warning>
+
+### Using the API
+
+You can also create API keys programmatically:
+
+<CodeGroup>
+```typescript TypeScript
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "your-existing-api-key",
+  organizationId: "your-org-id",
+});
+
+const newApiKey = await trieve.createOrganizationApiKey({
+  name: "Production API Key",
+  role: 1, // 0 = Read, 1 = Admin, 2 = Owner
+  dataset_ids: [], // Empty array = access to all datasets
+  scopes: [], // Empty array = access to all routes
+});
+
+console.log("New API Key:", newApiKey.api_key);
+```
+
+```python Python
+import trieve_py_client
+from trieve_py_client.rest import ApiException
+
+configuration = trieve_py_client.Configuration(
+    host="https://api.trieve.ai"
+)
+configuration.api_key['ApiKey'] = 'your-existing-api-key'
+
+with trieve_py_client.ApiClient(configuration) as api_client:
+    org_api = trieve_py_client.OrganizationApi(api_client)
+    
+    api_key_data = trieve_py_client.CreateApiKeyReqPayload(
+        name="Production API Key",
+        role=1,  # 0 = Read, 1 = Admin, 2 = Owner
+        dataset_ids=[],  # Empty = all datasets
+        scopes=[],  # Empty = all routes
+    )
+    
+    try:
+        result = org_api.create_organization_api_key(
+            api_key_data,
+            tr_organization="your-org-id"
+        )
+        print(f"New API Key: {result.api_key}")
+    except ApiException as e:
+        print(f"Exception: {e}")
+```
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/organization/api_key" \
+  -H "Authorization: Bearer your-existing-api-key" \
+  -H "TR-Organization: your-org-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production API Key",
+    "role": 1,
+    "dataset_ids": [],
+    "scopes": []
+  }'
+```
+</CodeGroup>
+
+## Using API Keys
+
+### Required Headers
+
+Every API request must include authentication headers:
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch("https://api.trieve.ai/api/chunk/search", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer tr-********************************",
+    "TR-Dataset": "your-dataset-id",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    query: "search query",
+    search_type: "hybrid",
+  }),
+});
+```
+
+```python Python
+import requests
+
+headers = {
+    "Authorization": "Bearer tr-********************************",
+    "TR-Dataset": "your-dataset-id",
+    "Content-Type": "application/json",
+}
+
+data = {
+    "query": "search query",
+    "search_type": "hybrid",
+}
+
+response = requests.post(
+    "https://api.trieve.ai/api/chunk/search",
+    headers=headers,
+    json=data
+)
+```
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/chunk/search" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: your-dataset-id" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "search query",
+    "search_type": "hybrid"
+  }'
+```
+</CodeGroup>
+
+### Header Reference
+
+| Header | Required | Description | Example |
+|--------|----------|-------------|----------|
+| `Authorization` | Yes | Your API key with `Bearer` prefix | `Bearer tr-...` |
+| `TR-Dataset` | Most endpoints | Dataset ID for the request | UUID format |
+| `TR-Organization` | Some endpoints | Organization ID for org-level operations | UUID format |
+| `X-API-VERSION` | Recommended | API version to use | `V2` |
+| `Content-Type` | POST/PUT | Request content type | `application/json` |
+
+<Info>
+  The TypeScript SDK automatically handles these headers when you initialize with `apiKey` and `datasetId`.
+</Info>
+
+## Alternative Header Names
+
+Trieve accepts alternative header names for compatibility:
+
+- **API Key**: `Authorization` or `X-API-KEY`
+- **Dataset**: `TR-Dataset` or `x-dataset`
+- **Organization**: `TR-Organization` or `x-organization`
+
+<CodeGroup>
+```bash Authorization Header
+curl -H "Authorization: Bearer tr-***" ...
+```
+
+```bash X-API-KEY Header
+curl -H "X-API-KEY: tr-***" ...
+```
+</CodeGroup>
+
+## API Key Roles
+
+API keys can have different permission levels:
+
+<Tabs>
+  <Tab title="Read (0)">
+    **Read-only access**
+    - Search and retrieve chunks
+    - Get dataset information
+    - View analytics
+    - Cannot create, update, or delete resources
+  </Tab>
+  <Tab title="Admin (1)">
+    **Full CRUD access**
+    - All read permissions
+    - Create, update, and delete chunks
+    - Manage datasets
+    - Upload files
+    - Cannot manage organization settings or billing
+  </Tab>
+  <Tab title="Owner (2)">
+    **Complete access**
+    - All admin permissions
+    - Manage organization settings
+    - Create and delete API keys
+    - Manage billing and subscriptions
+    - Add/remove users
+  </Tab>
+</Tabs>
+
+## Scoped API Keys
+
+Restrict API key access to specific datasets or routes for enhanced security:
+
+### Dataset Scoping
+
+Limit an API key to specific datasets:
+
+```typescript
+const apiKey = await trieve.createOrganizationApiKey({
+  name: "Limited Dataset Key",
+  role: 1,
+  dataset_ids: [
+    "dataset-uuid-1",
+    "dataset-uuid-2",
+  ],
+});
+```
+
+### Route Scoping
+
+Restrict access to specific API endpoints:
+
+```typescript
+const apiKey = await trieve.createOrganizationApiKey({
+  name: "Search-Only Key",
+  role: 1,
+  scopes: [
+    "POST /api/chunk/search",
+    "POST /api/chunk/autocomplete",
+    "GET /api/chunk/{chunk_id}",
+  ],
+});
+```
+
+<Tip>
+  Use scoped API keys in production to implement least-privilege access control.
+</Tip>
+
+## API Key Expiration
+
+Set expiration dates for temporary or rotating keys:
+
+```typescript
+const apiKey = await trieve.createOrganizationApiKey({
+  name: "Temporary Key",
+  role: 1,
+  expires_at: "2026-12-31T23:59:59Z", // UTC format
+});
+```
+
+<Warning>
+  Expired API keys will immediately stop working. Set up monitoring and rotation processes for production keys.
+</Warning>
+
+## Managing API Keys
+
+### List All API Keys
+
+<CodeGroup>
+```typescript TypeScript
+const apiKeys = await trieve.getOrganizationApiKeys();
+
+apiKeys.forEach(key => {
+  console.log(`Name: ${key.name}`);
+  console.log(`Role: ${key.role}`);
+  console.log(`Created: ${key.created_at}`);
+});
+```
+
+```bash cURL
+curl "https://api.trieve.ai/api/organization/api_key" \
+  -H "Authorization: Bearer your-api-key" \
+  -H "TR-Organization: your-org-id"
+```
+</CodeGroup>
+
+### Delete an API Key
+
+<CodeGroup>
+```typescript TypeScript
+await trieve.deleteOrganizationApiKey({
+  api_key_id: "key-uuid",
+});
+```
+
+```bash cURL
+curl -X DELETE "https://api.trieve.ai/api/organization/api_key/key-uuid" \
+  -H "Authorization: Bearer your-api-key" \
+  -H "TR-Organization: your-org-id"
+```
+</CodeGroup>
+
+## Security Best Practices
+
+<AccordionGroup>
+  <Accordion title="Never commit API keys to version control" icon="github">
+    - Use environment variables for API keys
+    - Add `.env` files to `.gitignore`
+    - Use secret management services in production
+    - Rotate keys immediately if exposed
+  </Accordion>
+
+  <Accordion title="Use scoped keys in production" icon="shield">
+    - Limit dataset access to only what's needed
+    - Restrict routes to minimum required endpoints
+    - Use read-only keys for public-facing features
+    - Separate keys for different environments
+  </Accordion>
+
+  <Accordion title="Rotate keys regularly" icon="rotate">
+    - Set expiration dates on production keys
+    - Implement key rotation schedule (e.g., every 90 days)
+    - Keep backup keys during rotation
+    - Monitor for suspicious activity
+  </Accordion>
+
+  <Accordion title="Store keys securely" icon="vault">
+    - Use environment variables, not hardcoded values
+    - Implement secrets management (AWS Secrets Manager, Vault, etc.)
+    - Never log API keys
+    - Encrypt keys at rest
+  </Accordion>
+</AccordionGroup>
+
+## Environment Variables
+
+Store API credentials in environment variables:
+
+<CodeGroup>
+```bash .env
+TRIEVE_API_KEY=tr-********************************
+TRIEVE_DATASET_ID=your-dataset-id
+TRIEVE_ORGANIZATION_ID=your-org-id
+```
+
+```typescript TypeScript
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: process.env.TRIEVE_API_KEY,
+  datasetId: process.env.TRIEVE_DATASET_ID,
+});
+```
+
+```python Python
+import os
+import trieve_py_client
+
+configuration = trieve_py_client.Configuration(
+    host="https://api.trieve.ai"
+)
+configuration.api_key['ApiKey'] = os.environ.get('TRIEVE_API_KEY')
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized" icon="lock">
+    **Possible causes:**
+    - Missing or invalid API key
+    - API key doesn't have required permissions
+    - API key has expired
+    
+    **Solutions:**
+    - Verify API key is correct and complete
+    - Check key role and scopes
+    - Create a new API key if expired
+  </Accordion>
+
+  <Accordion title="403 Forbidden" icon="ban">
+    **Possible causes:**
+    - API key lacks permission for this operation
+    - Dataset not accessible with this key
+    - Scope restrictions prevent access
+    
+    **Solutions:**
+    - Check API key role (needs Admin for writes)
+    - Verify dataset_ids includes target dataset
+    - Review scope restrictions
+  </Accordion>
+
+  <Accordion title="Missing TR-Dataset header" icon="header">
+    **Error message:** "Dataset ID is required"
+    
+    **Solution:**
+    - Add `TR-Dataset` header with your dataset UUID
+    - Or initialize SDK with `datasetId` parameter
+  </Accordion>
+</AccordionGroup>
+
+## Rate Limiting
+
+Trieve implements rate limiting based on your plan:
+
+- **Free tier**: Reasonable limits for development and testing
+- **Paid plans**: Higher limits based on subscription
+- **Rate limit headers**: Check response headers for limit information
+
+<Info>
+  Contact [developers@trieve.ai](mailto:developers@trieve.ai) if you need higher rate limits.
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api-reference"
+  >
+    Explore all available API endpoints
+  </Card>
+  <Card
+    title="TypeScript SDK"
+    icon="js"
+    href="https://ts-sdk.trieve.ai"
+  >
+    Complete SDK documentation
+  </Card>
+  <Card
+    title="Python SDK"
+    icon="python"
+    href="https://pypi.org/project/trieve-py-client/"
+  >
+    Python client library
+  </Card>
+  <Card
+    title="OpenAPI Spec"
+    icon="file-code"
+    href="https://api.trieve.ai/redoc"
+  >
+    Full OpenAPI specification
+  </Card>
+</CardGroup>

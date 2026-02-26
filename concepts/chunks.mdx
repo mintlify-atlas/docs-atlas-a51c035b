@@ -1,0 +1,515 @@
+---
+title: Chunks
+description: Chunks are the fundamental searchable units in Trieve - learn how to create, organize, and search them effectively
+---
+
+## What is a Chunk?
+
+A chunk is the fundamental unit of searchable content in Trieve. Each chunk represents a piece of information that can be:
+
+- Searched semantically using embeddings
+- Retrieved via keyword search (BM25)
+- Found through fulltext search (SPLADE)
+- Used in RAG (Retrieval Augmented Generation) responses
+
+Chunks can be as small as a single sentence or as large as multiple paragraphs, depending on your use case.
+
+## Why Chunks Matter
+
+Chunks are the building blocks of your search and RAG system:
+
+1. **Granular Retrieval**: Smaller chunks enable precise matching to user queries
+2. **Context Window Optimization**: Right-sized chunks fit better in LLM context windows
+3. **Relevance Scoring**: Each chunk is independently scored for relevance
+4. **Flexible Organization**: Chunks can belong to multiple groups and have rich metadata
+
+## Chunk Anatomy
+
+From the source code at `server/src/handlers/chunk_handler.rs:88-149`, a chunk contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `chunk_html` | string | The actual content (HTML or plaintext) |
+| `link` | string | URL or reference to source material |
+| `tag_set` | string[] | Tags for filtering (HNSW indexed) |
+| `metadata` | object | Arbitrary JSON for filtering |
+| `tracking_id` | string | External system identifier |
+| `time_stamp` | datetime | For time-based filtering and recency |
+| `location` | GeoInfo | Latitude/longitude for geo-filtering |
+| `image_urls` | string[] | Associated images |
+| `weight` | float | Bias search results (relative to other chunks) |
+| `num_value` | float | Numeric value for filtering |
+
+<Info>
+The `chunk_html` field is called "HTML" for convenience, but it can contain plain text. The innerText is extracted and used for embeddings.
+</Info>
+
+## Creating Chunks
+
+### Single Chunk Creation
+
+```typescript
+const chunk = await trieve.createChunk({
+  chunk_html: "<p>Trieve is a search infrastructure platform</p>",
+  link: "https://docs.trieve.ai",
+  tag_set: ["documentation", "overview"],
+  metadata: {
+    category: "introduction",
+    version: "1.0"
+  },
+  tracking_id: "intro-001"
+});
+```
+
+### Batch Chunk Creation
+
+For efficiency, create up to 120 chunks at once (from `server/src/handlers/chunk_handler.rs:356-366`):
+
+```typescript
+const chunks = await trieve.createChunks([
+  {
+    chunk_html: "First chunk content",
+    tag_set: ["docs"]
+  },
+  {
+    chunk_html: "Second chunk content",
+    tag_set: ["docs"]
+  }
+  // ... up to 120 chunks
+]);
+```
+
+## Advanced Content Processing
+
+### Semantic and Fulltext Content Separation
+
+You can specify different content for semantic vs fulltext search:
+
+```typescript
+const chunk = await trieve.createChunk({
+  chunk_html: "<h1>Product Name</h1><p>Full description here</p>",
+  semantic_content: "Product Name: A revolutionary tool for...",
+  fulltext_content: "Product Name revolutionary tool features benefits"
+});
+```
+
+This allows optimization for different search modalities.
+
+### HTML to Text Conversion
+
+By default, HTML is converted to text before embedding (from `server/src/handlers/chunk_handler.rs:139`):
+
+```typescript
+const chunk = await trieve.createChunk({
+  chunk_html: "<div><h1>Title</h1><p>Content</p></div>",
+  convert_html_to_text: true // default
+});
+```
+
+Set to `false` if you want HTML tags included in embeddings.
+
+### Split Averaging
+
+For long content, split into multiple chunks and average their vectors:
+
+```typescript
+const chunk = await trieve.createChunk({
+  chunk_html: "Very long document content...",
+  split_avg: true // Creates fuzzy average dense vector
+});
+```
+
+## Search Optimization
+
+### Fulltext Boosting
+
+Boost specific terms in BM25 and SPLADE search (from `server/src/handlers/chunk_handler.rs:59-66`):
+
+```typescript
+const chunk = await trieve.createChunk({
+  chunk_html: "AirBNB is a vacation rental platform",
+  fulltext_boost: {
+    phrase: "AirBNB",
+    boost_factor: 5.0 // Multiply token importance by 5x
+  }
+});
+```
+
+This ensures the official AirBNB listing ranks higher than third-party content about AirBNB.
+
+### Semantic Boosting
+
+Move the chunk's embedding vector toward a concept (from `server/src/handlers/chunk_handler.rs:68-76`):
+
+```typescript
+const chunk = await trieve.createChunk({
+  chunk_html: "iPhone 15 specifications",
+  semantic_boost: {
+    phrase: "flagship premium",
+    distance_factor: 0.25 // Move 25% closer to "flagship premium"
+  }
+});
+```
+
+Use this to enforce semantic clustering or associate chunks with concepts not explicitly mentioned.
+
+## Filtering and Metadata
+
+### Tag-Based Filtering (High Performance)
+
+Tags use HNSW indices for fast filtering:
+
+```typescript
+// Create chunks with tags
+await trieve.createChunk({
+  chunk_html: "Product documentation",
+  tag_set: ["docs", "v2.0", "api"]
+});
+
+// Filter search by tags (no performance penalty)
+const results = await trieve.search({
+  query: "authentication",
+  filters: {
+    must: [{ field: "tag_set", match_any: ["api"] }]
+  }
+});
+```
+
+### Metadata Filtering (Flexible but Slower)
+
+Metadata is stored as JSON and filtered at query time:
+
+```typescript
+// Create chunk with metadata
+await trieve.createChunk({
+  chunk_html: "Enterprise feature description",
+  metadata: {
+    tier: "enterprise",
+    release_date: "2024-01-15",
+    category: "security"
+  }
+});
+
+// Filter by metadata (performance hit)
+const results = await trieve.search({
+  query: "security features",
+  filters: {
+    must: [{
+      field: "metadata.tier",
+      match_any: ["enterprise"]
+    }]
+  }
+});
+```
+
+<Warning>
+Use tags for high-frequency filters. Use metadata for complex, low-frequency filters. There is a performance penalty for metadata filtering.
+</Warning>
+
+### Numeric Filtering
+
+Filter by numeric values with range queries:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: "Product with price $29.99",
+  num_value: 29.99
+});
+
+// Find products under $50
+const results = await trieve.search({
+  query: "affordable products",
+  filters: {
+    must: [{
+      field: "num_value",
+      range: { lte: 50.0 }
+    }]
+  }
+});
+```
+
+### Time-Based Filtering
+
+Use timestamps for recency bias and time windows:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: "News article content",
+  time_stamp: "2024-02-15T10:30:00"
+});
+
+// Find recent content
+const results = await trieve.search({
+  query: "latest updates",
+  filters: {
+    must: [{
+      field: "time_stamp",
+      range: {
+        gte: "2024-02-01T00:00:00"
+      }
+    }]
+  }
+});
+```
+
+### Geo-Location Filtering
+
+Filter chunks by geographic location:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: "Restaurant in Sydney",
+  location: {
+    lat: -33.8688,
+    lon: 151.2093
+  }
+});
+
+// Find nearby locations
+const results = await trieve.search({
+  query: "restaurants",
+  filters: {
+    must: [{
+      field: "location",
+      radius: {
+        center: { lat: -33.87, lon: 151.21 },
+        radius: 5000 // meters
+      }
+    }]
+  }
+});
+```
+
+## Updating Chunks
+
+Update existing chunks by ID or tracking_id (from `server/src/handlers/chunk_handler.rs:735-770`):
+
+```typescript
+await trieve.updateChunk({
+  chunk_id: "existing-chunk-id",
+  chunk_html: "Updated content",
+  tag_set: ["updated", "v2"],
+  metadata: { version: "2.0" }
+});
+```
+
+<Note>
+When you update a chunk, a new embedding is generated and the chunk is reindexed in Qdrant.
+</Note>
+
+## Upserting Chunks
+
+Create or update chunks based on `tracking_id`:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: "Content that may exist",
+  tracking_id: "unique-id-123",
+  upsert_by_tracking_id: true // Update if exists, create if not
+});
+```
+
+## Deleting Chunks
+
+### Single Deletion
+
+```typescript
+// By ID
+await trieve.deleteChunk(chunkId);
+
+// By tracking_id
+await trieve.deleteChunkByTrackingId("tracking-id-123");
+```
+
+### Bulk Deletion
+
+Delete multiple chunks using filters (from `server/src/handlers/chunk_handler.rs:617-674`):
+
+```typescript
+await trieve.bulkDeleteChunks({
+  filter: {
+    must: [
+      { field: "tag_set", match_any: ["deprecated"] }
+    ]
+  }
+});
+```
+
+## Groups and Chunks
+
+Chunks can belong to multiple groups for organization:
+
+```typescript
+// Create chunk and add to groups
+await trieve.createChunk({
+  chunk_html: "Content",
+  group_ids: ["group-id-1", "group-id-2"],
+  group_tracking_ids: ["group-tracking-1"]
+});
+```
+
+See the [Groups concept](/concepts/groups) for more details.
+
+## Image Association
+
+Associate images with chunks for multi-modal applications:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: "Product description",
+  image_urls: [
+    "https://example.com/product-1.jpg",
+    "https://example.com/product-2.jpg"
+  ]
+});
+```
+
+## Chunk Weight for Ranking
+
+Bias search results using weight (relative to other chunks in the dataset):
+
+```typescript
+// Boost important chunks
+await trieve.createChunk({
+  chunk_html: "Critical documentation",
+  weight: 2.0 // 2x more important than default (1.0)
+});
+
+// De-emphasize less important chunks
+await trieve.createChunk({
+  chunk_html: "Tangential information",
+  weight: 0.5 // Half as important
+});
+```
+
+## Ingestion Queue
+
+Chunks are processed asynchronously through an ingestion queue. The response includes the chunk metadata, but embedding and indexing happen in the background:
+
+```typescript
+const response = await trieve.createChunk({
+  chunk_html: "Content"
+});
+
+// Response contains chunk metadata immediately
+console.log(response.chunk_metadata);
+
+// Chunk is being processed in background:
+// 1. Embedding generation
+// 2. Qdrant indexing
+// 3. Tag indexing
+```
+
+Check queue status:
+
+```typescript
+const queues = await trieve.getDatasetQueueLengths();
+console.log(`Chunks in queue: ${queues.chunk_queue_length}`);
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Optimal chunk size">
+    - **Typical**: 200-500 words (1-3 paragraphs)
+    - **Smaller**: Better for precise retrieval, worse for context
+    - **Larger**: Better for context, worse for precision
+    - Test with your specific content and use case
+  </Accordion>
+  
+  <Accordion title="Use tracking_id for external integration">
+    Always set `tracking_id` when integrating with external systems. This allows you to update or delete chunks without storing Trieve IDs.
+  </Accordion>
+  
+  <Accordion title="Choose tags vs metadata wisely">
+    - **Tags**: Frequent filters (type, category, version)
+    - **Metadata**: Complex filters (nested objects, rare filters)
+  </Accordion>
+  
+  <Accordion title="Batch creation for efficiency">
+    Create chunks in batches of up to 120 for better performance. Single chunk creation is fine for real-time updates.
+  </Accordion>
+  
+  <Accordion title="Use semantic and fulltext content strategically">
+    - `semantic_content`: Optimized for meaning (remove boilerplate)
+    - `fulltext_content`: Optimized for keywords (include synonyms)
+    - `chunk_html`: What's stored and displayed
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Document Chunking
+
+When uploading documents, chunk them appropriately:
+
+```typescript
+// Option 1: Use file upload (automatic chunking)
+await trieve.uploadFile({
+  file_name: "document.pdf",
+  base64_file: base64Content,
+  target_splits_per_chunk: 20
+});
+
+// Option 2: Manual chunking with hierarchy
+const paragraphs = extractParagraphs(document);
+for (const [index, paragraph] of paragraphs.entries()) {
+  await trieve.createChunk({
+    chunk_html: paragraph,
+    metadata: {
+      document_id: docId,
+      page: Math.floor(index / 3),
+      paragraph_index: index
+    },
+    tracking_id: `${docId}-p${index}`
+  });
+}
+```
+
+### FAQ Chunks
+
+Structure FAQ content for optimal retrieval:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: `<h3>${question}</h3><p>${answer}</p>`,
+  semantic_content: `${question} ${answer}`,
+  fulltext_boost: {
+    phrase: question,
+    boost_factor: 3.0 // Boost question terms
+  },
+  tag_set: ["faq"],
+  metadata: { category: "billing" }
+});
+```
+
+### Product Catalog
+
+Optimize product chunks for e-commerce:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: product.description,
+  metadata: {
+    product_id: product.id,
+    category: product.category,
+    brand: product.brand,
+    in_stock: product.inStock
+  },
+  num_value: product.price,
+  tag_set: [product.category, product.brand],
+  image_urls: product.images,
+  weight: product.featured ? 2.0 : 1.0
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Search Chunks" icon="magnifying-glass" href="/api-reference/chunks/search">
+    Learn how to search your chunks
+  </Card>
+  <Card title="Organize with Groups" icon="layer-group" href="/concepts/groups">
+    Group related chunks together
+  </Card>
+</CardGroup>

@@ -1,0 +1,93 @@
+---
+title: Get File with Signed URL
+description: Get all of the information for a file along with a signed S3 URL for downloading
+---
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "https://api.trieve.ai/api/file/{file_id}?ttl=86400" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "TR-Dataset: <dataset-id>"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "<your-api-key>",
+  datasetId: "<dataset-id>"
+});
+
+const file = await trieve.getFile({
+  fileId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  ttl: 86400
+});
+
+console.log(file.s3_url);
+console.log(file.file_name);
+```
+
+</RequestExample>
+
+## Get File with Signed URL
+
+<ParamField path="file_id" type="string (uuid)" required>
+  The id of the file to fetch.
+</ParamField>
+
+<ParamField query="ttl" type="number" default="86400">
+  The time to live of the signed url in seconds. Defaults to 86400 seconds (1 day).
+</ParamField>
+
+<ParamField query="content_type" type="string">
+  Optional field to override the presigned url's Content-Type header.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string (uuid)" required>
+  The unique identifier for the file.
+</ResponseField>
+
+<ResponseField name="file_name" type="string" required>
+  Name of the file.
+</ResponseField>
+
+<ResponseField name="s3_url" type="string" required>
+  Signed S3 URL where the original file can be downloaded. This URL will expire after the TTL period.
+</ResponseField>
+
+<ResponseField name="size" type="number" required>
+  Size of the file in bytes.
+</ResponseField>
+
+<ResponseField name="tag_set" type="string[]">
+  Tags associated with the file.
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  Metadata associated with the file.
+</ResponseField>
+
+<ResponseField name="link" type="string">
+  Link to the file.
+</ResponseField>
+
+<ResponseField name="time_stamp" type="string (datetime)">
+  Timestamp for the file.
+</ResponseField>
+
+<ResponseField name="created_at" type="string (datetime)" required>
+  When the file was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string (datetime)" required>
+  When the file was last updated.
+</ResponseField>
+
+<Note>
+  The signed S3 URL allows you to download the original file directly from S3. The URL will be valid for the duration specified by the `ttl` parameter.
+  
+  Auth'ed user or api key must have at least readonly role for the specified dataset's organization.
+</Note>

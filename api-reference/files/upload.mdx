@@ -1,0 +1,176 @@
+---
+title: Upload File
+description: Upload a file to S3 bucket attached to your dataset
+---
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/file" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "TR-Dataset: <dataset-id>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "base64_file": "<base64_encoded_file>",
+    "file_name": "example.pdf",
+    "tag_set": ["tag1", "tag2"],
+    "description": "This is an example file",
+    "link": "https://example.com",
+    "time_stamp": "2021-01-01T00:00:00.000Z",
+    "metadata": {
+      "key1": "value1",
+      "key2": "value2"
+    },
+    "create_chunks": true,
+    "target_splits_per_chunk": 20
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+import fs from "fs";
+
+const trieve = new TrieveSDK({
+  apiKey: "<your-api-key>",
+  datasetId: "<dataset-id>"
+});
+
+// Read and encode file
+const fileBuffer = fs.readFileSync("./example.pdf");
+const base64File = fileBuffer.toString("base64");
+
+const result = await trieve.uploadFile({
+  base64_file: base64File,
+  file_name: "example.pdf",
+  tag_set: ["tag1", "tag2"],
+  description: "This is an example file",
+  link: "https://example.com",
+  metadata: {
+    key1: "value1",
+    key2: "value2"
+  },
+  create_chunks: true,
+  target_splits_per_chunk: 20,
+  group_tracking_id: "my-file-group"
+});
+
+console.log(result.file_metadata);
+```
+
+</RequestExample>
+
+## Upload File
+
+<ParamField path="base64_file" type="string" required>
+  Base64 encoded file. You must specifically use a base64url encoding.
+</ParamField>
+
+<ParamField path="file_name" type="string" required>
+  Name of the file being uploaded, including the extension.
+</ParamField>
+
+<ParamField path="tag_set" type="string[]">
+  Tag set is a comma separated list of tags which will be passed down to the chunks made from the file. Tags are used to filter chunks when searching. HNSW indices are created for each tag such that there is no performance loss when filtering on them.
+</ParamField>
+
+<ParamField path="description" type="string">
+  Description is an optional convenience field so you do not have to remember what the file contains or is about. It will be included on the group resulting from the file which will hold its chunk.
+</ParamField>
+
+<ParamField path="link" type="string">
+  Link to the file. This can also be any string. This can be used to filter when searching for the file's resulting chunks. The link value will not affect embedding creation.
+</ParamField>
+
+<ParamField path="time_stamp" type="string">
+  Time stamp should be an ISO 8601 combined date and time without timezone. Time_stamp is used for time window filtering and recency-biasing search results. Will be passed down to the file's chunks.
+</ParamField>
+
+<ParamField path="metadata" type="object">
+  Metadata is a JSON object which can be used to filter chunks. This is useful for when you want to filter chunks by arbitrary metadata. Unlike with tag filtering, there is a performance hit for filtering on metadata. Will be passed down to the file's chunks.
+</ParamField>
+
+<ParamField path="create_chunks" type="boolean" default="true">
+  Create chunks is a boolean which determines whether or not to create chunks from the file. If false, you can manually chunk the file and send the chunks to the create_chunk endpoint with the file_id to associate chunks with the file. Meant mostly for advanced users.
+</ParamField>
+
+<ParamField path="rebalance_chunks" type="boolean" default="true">
+  Rebalance chunks is an optional field which allows you to specify whether or not to rebalance the chunks created from the file. If true, Trieve will evenly distribute remainder splits across chunks such that 66 splits with a `target_splits_per_chunk` of 20 will result in 3 chunks with 22 splits each.
+</ParamField>
+
+<ParamField path="split_delimiters" type="string[]" default='[".", "!", "?", "\\n"]'>
+  Split delimiters is an optional field which allows you to specify the delimiters to use when splitting the file before chunking the text. If not specified, the default [.!?\n] are used to split into sentences. However, you may want to use spaces or other delimiters.
+</ParamField>
+
+<ParamField path="target_splits_per_chunk" type="number" default="20">
+  Target splits per chunk. This is an optional field which allows you to specify the number of splits you want per chunk. If not specified, the default 20 is used. However, you may want to use a different number.
+</ParamField>
+
+<ParamField path="group_tracking_id" type="string">
+  Group tracking id is an optional field which allows you to specify the tracking id of the group that is created from the file. Chunks created will be created with the tracking id of `group_tracking_id|<index of chunk>`
+</ParamField>
+
+<ParamField path="chunkr_create_task_req_payload" type="object">
+  The request payload to use for the Chunkr API create task endpoint. Will use [chunkr.ai](https://chunkr.ai) to process the file when this object is defined. See [docs.chunkr.ai/api-references/task/create-task](https://docs.chunkr.ai/api-references/task/create-task) for detailed information about what each field on this request payload does.
+</ParamField>
+
+<ParamField path="pdf2md_options" type="object">
+  Parameter to use pdf2md_ocr. We plan to deprecate pdf2md in favor of chunkr.ai. This is a legacy option for using a vision LLM to convert a given file into markdown and then ingest it.
+</ParamField>
+
+<ParamField path="split_avg" type="boolean" default="false">
+  Split average will automatically split your file into multiple chunks and average all of the resulting vectors into a single output chunk. Default is false. Explicitly enabling this will cause each file to only produce a single chunk.
+</ParamField>
+
+<ParamField path="webhook_url" type="string">
+  Optional webhook URL to receive notifications for each page processed.
+</ParamField>
+
+## Response
+
+<ResponseField name="file_metadata" type="object" required>
+  File object information. Id, name, tag_set, etc.
+  
+  <Expandable title="properties">
+    <ResponseField name="id" type="string (uuid)" required>
+      The unique identifier for the file.
+    </ResponseField>
+    
+    <ResponseField name="file_name" type="string" required>
+      Name of the file.
+    </ResponseField>
+    
+    <ResponseField name="size" type="number" required>
+      Size of the file in bytes.
+    </ResponseField>
+    
+    <ResponseField name="tag_set" type="string[]">
+      Tags associated with the file.
+    </ResponseField>
+    
+    <ResponseField name="metadata" type="object">
+      Metadata associated with the file.
+    </ResponseField>
+    
+    <ResponseField name="link" type="string">
+      Link to the file.
+    </ResponseField>
+    
+    <ResponseField name="time_stamp" type="string">
+      Timestamp for the file.
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string (datetime)" required>
+      When the file was created.
+    </ResponseField>
+    
+    <ResponseField name="updated_at" type="string (datetime)" required>
+      When the file was last updated.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<Note>
+  You can select between a naive chunking strategy where the text is extracted with Apache Tika and split into segments with a target number of segments per chunk OR you can use a vision LLM to convert the file to markdown and create chunks per page.
+  
+  Auth'ed user must be an admin or owner of the dataset's organization to upload a file.
+</Note>

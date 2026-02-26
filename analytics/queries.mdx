@@ -1,0 +1,540 @@
+---
+title: "Query Analytics"
+description: "Analyze search queries, identify patterns, and optimize search performance"
+---
+
+## Overview
+
+Query analytics provide insights into what users are searching for, how queries perform, and where improvements are needed. Use these endpoints to identify popular searches, problematic queries, and optimization opportunities.
+
+## Query Types
+
+Trieve categorizes queries into several types for analysis:
+
+### Head Queries
+
+The most frequently searched terms in your dataset. These represent common user needs and should be optimized for the best experience.
+
+### Low Confidence Queries
+
+Searches where the system has low confidence in result relevance. These queries may need content additions or search parameter adjustments.
+
+### No Result Queries
+
+Queries that returned zero results. These represent gaps in your content or search coverage.
+
+### All Queries
+
+Complete query history with filtering, sorting, and pagination options.
+
+## Retrieving Query Data
+
+### Get All Queries
+
+Retrieve paginated search queries with filtering:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1,
+    "sort_by": "created_at",
+    "sort_order": "desc",
+    "has_clicks": null
+  }
+}'
+```
+
+**Response includes:**
+- Query text
+- Search parameters used
+- Timestamp
+- Latency
+- Result count
+- Click data
+
+### Get Head Queries
+
+Identify the most popular searches:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "HeadQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z",
+        "lt": "2024-12-31T23:59:59Z"
+      }
+    },
+    "page": 1
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "queries": [
+    {
+      "query": "getting started",
+      "count": 1523
+    },
+    {
+      "query": "api authentication",
+      "count": 892
+    },
+    {
+      "query": "pricing plans",
+      "count": 634
+    }
+  ]
+}
+```
+
+### Get Low Confidence Queries
+
+Find queries where results may not be relevant:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "LowConfidenceQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "threshold": 0.5,
+    "page": 1
+  }
+}'
+```
+
+<ParamField path="threshold" type="number" default="0.5">
+  Confidence threshold below which queries are considered low confidence (0.0 to 1.0)
+</ParamField>
+
+### Get No Result Queries
+
+Identify queries that returned no results:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "NoResultQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1
+  }
+}'
+```
+
+## Query Details
+
+Get complete details for a specific query:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "QueryDetails": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}'
+```
+
+**Response includes:**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "query": "machine learning tutorial",
+  "search_type": "hybrid",
+  "latency": 123,
+  "top_score": 0.89,
+  "results": [
+    {
+      "chunk_id": "123e4567-e89b-12d3-a456-426614174000",
+      "score": 0.89,
+      "metadata": {...}
+    }
+  ],
+  "created_at": "2024-01-15T10:30:00Z"
+}
+```
+
+## Query Counts
+
+Get total query counts with optional deduplication:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "CountQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "count_collapsed_queries": true
+  }
+}'
+```
+
+<ParamField path="count_collapsed_queries" type="boolean" default="false">
+  If true, counts each unique query text once. If false, counts all query executions.
+</ParamField>
+
+## RAG Query Analytics
+
+For RAG (conversational) queries, use dedicated endpoints:
+
+### Get RAG Queries
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "RAGQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1,
+    "has_clicks": null,
+    "sort_by": "created_at",
+    "sort_order": "desc"
+  }
+}'
+```
+
+### Get Topic Queries
+
+Analyze queries within a conversation topic:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "TopicQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1,
+    "sort_by": "created_at",
+    "sort_order": "desc",
+    "topic_events_filter": null
+  }
+}'
+```
+
+### Get Followup Queries
+
+Identify common followup questions in conversations:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "FollowupQueries": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1
+  }
+}'
+```
+
+## Filtering Options
+
+All query endpoints support comprehensive filtering:
+
+<ParamField path="date_range" type="object">
+  Filter by time range
+  ```json
+  {
+    "gt": "2024-01-01T00:00:00Z",
+    "lt": "2024-12-31T23:59:59Z"
+  }
+  ```
+</ParamField>
+
+<ParamField path="search_method" type="string">
+  Filter by search method:
+  - `"fulltext"` - Full-text search
+  - `"semantic"` - Semantic/vector search
+  - `"hybrid"` - Hybrid search
+</ParamField>
+
+<ParamField path="search_type" type="string">
+  Filter by search type:
+  - `"search"` - Standard search
+  - `"autocomplete"` - Autocomplete queries
+  - `"search_over_groups"` - Group-based search
+</ParamField>
+
+<ParamField path="has_clicks" type="boolean">
+  Filter queries by whether they resulted in clicks
+  - `true` - Only queries with clicks
+  - `false` - Only queries without clicks
+  - `null` - All queries
+</ParamField>
+
+## Sorting Options
+
+<ParamField path="sort_by" type="string">
+  Field to sort by:
+  - `"created_at"` - Query timestamp
+  - `"latency"` - Response time
+  - `"top_score"` - Highest result score
+</ParamField>
+
+<ParamField path="sort_order" type="string">
+  Sort direction:
+  - `"asc"` - Ascending
+  - `"desc"` - Descending
+</ParamField>
+
+## Popular Filters
+
+Identify which filters users apply most frequently:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "PopularFilters": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    }
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "filters": [
+    {
+      "field": "category",
+      "value": "tutorials",
+      "count": 1234
+    },
+    {
+      "field": "difficulty",
+      "value": "beginner",
+      "count": 987
+    }
+  ]
+}
+```
+
+## Query Rating
+
+Collect user feedback on query quality:
+
+```bash
+curl -X PUT 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "query_id": "550e8400-e29b-41d4-a716-446655440000",
+  "rating": 1,
+  "note": "Results were very helpful",
+  "metadata": {
+    "user_id": "user_123",
+    "found_answer": true
+  }
+}'
+```
+
+<ParamField path="rating" type="integer" required>
+  Rating value:
+  - `1` - Positive
+  - `0` - Neutral  
+  - `-1` - Negative
+</ParamField>
+
+<ParamField path="note" type="string">
+  Optional text feedback from the user
+</ParamField>
+
+<ParamField path="metadata" type="object">
+  Additional context about the rating
+</ParamField>
+
+## Use Cases
+
+### Identify Content Gaps
+
+Analyze no-result queries to find missing content:
+
+1. Query `NoResultQueries` endpoint
+2. Group queries by topic or category
+3. Identify patterns in missing content
+4. Add content to fill gaps
+5. Monitor query success rate improvement
+
+### Optimize Popular Searches
+
+Ensure head queries deliver excellent results:
+
+1. Query `HeadQueries` endpoint
+2. Test each popular query manually
+3. Review result quality and relevance
+4. Adjust ranking or add boost rules
+5. Track CTR and ratings for these queries
+
+### Improve Low Confidence Results
+
+Address queries with poor result confidence:
+
+1. Query `LowConfidenceQueries` endpoint
+2. Analyze why confidence is low
+3. Add more relevant content
+4. Adjust search parameters
+5. Monitor confidence improvements
+
+### Monitor Search Health
+
+Track overall query performance:
+
+1. Monitor query count trends
+2. Track percentage of no-result queries
+3. Watch low confidence query rates
+4. Review average latency metrics
+5. Set up alerts for anomalies
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Regular Review Schedule">
+    Review query analytics weekly to identify trends and issues early
+  </Accordion>
+  <Accordion title="Focus on High-Volume Queries">
+    Prioritize optimization of head queries that impact the most users
+  </Accordion>
+  <Accordion title="Track Before/After Metrics">
+    Measure the impact of changes by comparing metrics before and after optimizations
+  </Accordion>
+  <Accordion title="Collect User Ratings">
+    Implement rating collection to get direct feedback on search quality
+  </Accordion>
+  <Accordion title="Monitor Seasonal Patterns">
+    Track query patterns over time to understand seasonal variations
+  </Accordion>
+</AccordionGroup>
+
+## Example Dashboard
+
+```javascript
+// Fetch key query metrics for a dashboard
+async function getQueryDashboard() {
+  const headers = {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID',
+    'Content-Type': 'application/json'
+  };
+  
+  const filter = {
+    date_range: {
+      gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  };
+
+  // Fetch multiple metrics in parallel
+  const [headQueries, noResultQueries, lowConfQueries, queryCounts] = await Promise.all([
+    fetch('https://api.trieve.ai/api/analytics/search', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ HeadQueries: { filter, page: 1 } })
+    }).then(r => r.json()),
+    
+    fetch('https://api.trieve.ai/api/analytics/search', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ NoResultQueries: { filter, page: 1 } })
+    }).then(r => r.json()),
+    
+    fetch('https://api.trieve.ai/api/analytics/search', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ LowConfidenceQueries: { filter, threshold: 0.5, page: 1 } })
+    }).then(r => r.json()),
+    
+    fetch('https://api.trieve.ai/api/analytics/search', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ CountQueries: { filter, count_collapsed_queries: false } })
+    }).then(r => r.json())
+  ]);
+
+  return {
+    topSearches: headQueries.queries,
+    noResults: noResultQueries.queries,
+    lowConfidence: lowConfQueries.queries,
+    totalQueries: queryCounts.count
+  };
+}
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="CTR Data" href="/analytics/ctr-data" icon="mouse-pointer">
+    Track click-through rates for queries
+  </Card>
+  <Card title="Metrics" href="/analytics/metrics" icon="chart-bar">
+    Explore performance metrics
+  </Card>
+  <Card title="Search API" href="/api-reference/chunks/search" icon="magnifying-glass">
+    Search API reference
+  </Card>
+  <Card title="Analytics API" href="/api-reference/analytics/queries" icon="chart-line">
+    Complete analytics API docs
+  </Card>
+</CardGroup>

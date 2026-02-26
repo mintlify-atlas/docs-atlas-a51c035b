@@ -1,0 +1,730 @@
+---
+title: "Analytics Metrics"
+description: "Comprehensive guide to all analytics metrics available in Trieve"
+---
+
+## Overview
+
+Trieve provides a comprehensive set of metrics to measure and optimize search, RAG, and recommendation performance. This page documents all available metrics and how to retrieve them.
+
+## Search Metrics
+
+### Overall Search Metrics
+
+Get aggregate statistics about search performance:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchMetrics": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z",
+        "lt": "2024-12-31T23:59:59Z"
+      }
+    }
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "total_queries": 15234,
+  "avg_latency": 145.6,
+  "p99": 450.2,
+  "p95": 320.5,
+  "p50": 120.3,
+  "total_positive_ratings": 78.5,
+  "total_negative_ratings": 12.3
+}
+```
+
+<ResponseField name="total_queries" type="integer">
+  Total number of search queries in the time period
+</ResponseField>
+
+<ResponseField name="avg_latency" type="number">
+  Average query latency in milliseconds
+</ResponseField>
+
+<ResponseField name="p99" type="number">
+  99th percentile latency - 99% of queries complete faster than this
+</ResponseField>
+
+<ResponseField name="p95" type="number">
+  95th percentile latency
+</ResponseField>
+
+<ResponseField name="p50" type="number">
+  Median latency (50th percentile)
+</ResponseField>
+
+<ResponseField name="total_positive_ratings" type="number">
+  Percentage of queries with positive ratings (≥1)
+</ResponseField>
+
+<ResponseField name="total_negative_ratings" type="number">
+  Percentage of queries with negative ratings (≤0)
+</ResponseField>
+
+### Latency Graph
+
+Track latency trends over time:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "LatencyGraph": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "latency_points": [
+    {
+      "time": "2024-01-01T00:00:00Z",
+      "average_latency": 142.5
+    },
+    {
+      "time": "2024-01-02T00:00:00Z",
+      "average_latency": 138.2
+    }
+  ]
+}
+```
+
+### Search Usage Graph
+
+Visualize search volume over time:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchUsageGraph": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "hour"
+  }
+}'
+```
+
+<ParamField path="granularity" type="string" required>
+  Time granularity for grouping:
+  - `"hour"` - Hourly data points
+  - `"day"` - Daily data points
+  - `"week"` - Weekly data points
+  - `"month"` - Monthly data points
+</ParamField>
+
+### Searches Per User
+
+Track average searches per unique user:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchesPerUser": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "avg_searches_per_user": 3.7,
+  "points": [
+    {
+      "time": "2024-01-01T00:00:00Z",
+      "value": 3.5
+    },
+    {
+      "time": "2024-01-02T00:00:00Z",
+      "value": 3.9
+    }
+  ]
+}
+```
+
+### Search Average Rating
+
+Monitor user satisfaction with search results:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchAverageRating": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "week"
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "avg_search_rating": 0.72,
+  "points": [
+    {
+      "time": "2024-01-01T00:00:00Z",
+      "value": 0.68
+    },
+    {
+      "time": "2024-01-08T00:00:00Z",
+      "value": 0.76
+    }
+  ]
+}
+```
+
+## Conversion Metrics
+
+### Search Conversion Rate
+
+Track the percentage of searches that lead to conversions:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchConversionRate": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "conversion_rate": 15.8,
+  "points": [
+    {
+      "time": "2024-01-01T00:00:00Z",
+      "value": 14.2
+    },
+    {
+      "time": "2024-01-02T00:00:00Z",
+      "value": 17.4
+    }
+  ]
+}
+```
+
+<Note>
+  Conversion tracking requires sending custom events with conversion metadata using the `/analytics/events` endpoint.
+</Note>
+
+### Chat Conversion Rate
+
+For RAG/chat interactions:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "ChatConversionRate": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "week"
+  }
+}'
+```
+
+## Revenue Metrics
+
+### Search Revenue
+
+Track revenue attributed to search:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchRevenue": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "direct": false,
+    "granularity": "month"
+  }
+}'
+```
+
+<ParamField path="direct" type="boolean">
+  - `true` - Only direct revenue (same session as search)
+  - `false` - All attributed revenue (including assisted conversions)
+</ParamField>
+
+### Chat Revenue
+
+Track revenue from RAG/chat interactions:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "ChatRevenue": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "direct": true,
+    "granularity": "week"
+  }
+}'
+```
+
+## RAG Metrics
+
+### RAG Usage Graph
+
+Track RAG query volume:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "RAGUsageGraph": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+### Messages Per User
+
+Average number of chat messages per user:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "MessagesPerUser": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "week"
+  }
+}'
+```
+
+### Chat Average Rating
+
+User satisfaction with chat responses:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "ChatAverageRating": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+### Topics Over Time
+
+Track conversation topic trends:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "TopicsOverTime": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "week"
+  }
+}'
+```
+
+## Recommendation Metrics
+
+### Recommendation Usage Graph
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/recommendations' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "RecommendationUsageGraph": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+### Recommendations Per User
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/recommendations' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "RecommendationsPerUser": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "week"
+  }
+}'
+```
+
+### Recommendation Conversion Rate
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/recommendations' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "RecommendationConversionRate": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+## Component Analytics
+
+### Total Unique Users
+
+Track unique user counts:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/component' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "TotalUniqueUsers": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+### Top Pages
+
+Identify most visited pages:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/component' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "TopPages": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1
+  }
+}'
+```
+
+### Top Components
+
+Most engaged UI components:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/component' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "TopComponents": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1
+  }
+}'
+```
+
+### Component Interaction Time
+
+Time spent interacting with components:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/component' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "ComponentInteractionTime": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "hour"
+  }
+}'
+```
+
+## Event Funnel Analysis
+
+### Search Event Funnel
+
+Analyze the search event funnel:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "EventFunnel": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    }
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "event_names": [
+    {
+      "event_name": "search",
+      "event_count": 10000
+    },
+    {
+      "event_name": "click",
+      "event_count": 7500
+    },
+    {
+      "event_name": "conversion",
+      "event_count": 1200
+    }
+  ]
+}
+```
+
+### RAG Event Funnel
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/rag' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "EventFunnel": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    }
+  }
+}'
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Choose Appropriate Granularity">
+    Use finer granularity (hour/day) for recent data and coarser granularity (week/month) for historical trends to optimize performance
+  </Accordion>
+  <Accordion title="Set Up Dashboards">
+    Create dashboards that combine multiple metrics for a holistic view of system performance
+  </Accordion>
+  <Accordion title="Monitor Trends Over Time">
+    Track metrics over consistent time periods to identify patterns and anomalies
+  </Accordion>
+  <Accordion title="Correlate Metrics">
+    Look for relationships between metrics (e.g., latency impact on conversion rate)
+  </Accordion>
+  <Accordion title="Set Baselines and Alerts">
+    Establish baseline metrics and set up alerts for significant deviations
+  </Accordion>
+</AccordionGroup>
+
+## Metrics Dashboard Example
+
+```javascript
+// Comprehensive metrics dashboard
+async function fetchAllMetrics() {
+  const headers = {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID',
+    'Content-Type': 'application/json'
+  };
+  
+  const filter = {
+    date_range: {
+      gt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  };
+
+  const baseUrl = 'https://api.trieve.ai/api/analytics';
+
+  const [searchMetrics, latencyGraph, usageGraph, ctrMetrics, conversionRate] = await Promise.all([
+    // Overall search metrics
+    fetch(`${baseUrl}/search`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ SearchMetrics: { filter } })
+    }).then(r => r.json()),
+    
+    // Latency over time
+    fetch(`${baseUrl}/search`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ LatencyGraph: { filter, granularity: 'day' } })
+    }).then(r => r.json()),
+    
+    // Search volume
+    fetch(`${baseUrl}/search`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ SearchUsageGraph: { filter, granularity: 'day' } })
+    }).then(r => r.json()),
+    
+    // CTR metrics
+    fetch(`${baseUrl}/events/ctr`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ SearchCTRMetrics: { filter } })
+    }).then(r => r.json()),
+    
+    // Conversion rate
+    fetch(`${baseUrl}/search`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ SearchConversionRate: { filter, granularity: 'day' } })
+    }).then(r => r.json())
+  ]);
+
+  return {
+    overview: searchMetrics,
+    latency: latencyGraph,
+    usage: usageGraph,
+    ctr: ctrMetrics,
+    conversion: conversionRate
+  };
+}
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="CTR Data" href="/analytics/ctr-data" icon="mouse-pointer">
+    Deep dive into CTR tracking
+  </Card>
+  <Card title="Query Analytics" href="/analytics/queries" icon="magnifying-glass">
+    Analyze query patterns
+  </Card>
+  <Card title="Analytics API" href="/api-reference/analytics/get" icon="code">
+    Complete API reference
+  </Card>
+  <Card title="Events API" href="/api-reference/events/get" icon="calendar-check">
+    Send custom events
+  </Card>
+</CardGroup>

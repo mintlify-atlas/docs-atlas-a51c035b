@@ -1,0 +1,190 @@
+---
+title: "Get Chunk"
+description: "Retrieve a singular chunk by its id or tracking_id."
+---
+
+<RequestExample>
+```bash cURL (by ID)
+curl -X GET https://api.trieve.ai/api/chunk/d290f1ee-6c54-4b01-90e6-d701748f0851 \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID"
+```
+
+```bash cURL (by Tracking ID)
+curl -X GET https://api.trieve.ai/api/chunk/tracking_id/my-tracking-id \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID"
+```
+
+```typescript TypeScript SDK (by ID)
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const chunk = await trieve.getChunk({
+  chunkId: "d290f1ee-6c54-4b01-90e6-d701748f0851"
+});
+```
+
+```typescript TypeScript SDK (by Tracking ID)
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const chunk = await trieve.getChunkByTrackingId({
+  trackingId: "my-tracking-id"
+});
+```
+
+```python Python SDK (by ID)
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="YOUR_API_KEY",
+  dataset_id="YOUR_DATASET_ID"
+)
+
+chunk = trieve.get_chunk(
+  chunk_id="d290f1ee-6c54-4b01-90e6-d701748f0851"
+)
+```
+
+```python Python SDK (by Tracking ID)
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="YOUR_API_KEY",
+  dataset_id="YOUR_DATASET_ID"
+)
+
+chunk = trieve.get_chunk_by_tracking_id(
+  tracking_id="my-tracking-id"
+)
+```
+</RequestExample>
+
+## Method and Path
+
+<CodeGroup>
+```http Get by ID
+GET /api/chunk/{chunk_id}
+```
+
+```http Get by Tracking ID
+GET /api/chunk/tracking_id/{tracking_id}
+```
+</CodeGroup>
+
+## Authentication
+
+Requires API key with **readonly** role or higher for the specified dataset's organization.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="X-API-Version" type="string" optional>
+  The API version to use for this request. Defaults to V2 for orgs created after July 12, 2024 and V1 otherwise.
+</ParamField>
+
+## Path Parameters
+
+### Get by ID
+
+<ParamField path="chunk_id" type="string" required>
+  Id of the chunk you want to fetch.
+</ParamField>
+
+### Get by Tracking ID
+
+<ParamField path="tracking_id" type="string" required>
+  tracking_id of the chunk you want to fetch. This is useful when coordinating with an external system.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier for the chunk
+</ResponseField>
+
+<ResponseField name="chunk_html" type="string">
+  HTML content of the chunk
+</ResponseField>
+
+<ResponseField name="link" type="string">
+  Link associated with the chunk
+</ResponseField>
+
+<ResponseField name="tag_set" type="array">
+  Tags associated with the chunk
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  Metadata object associated with the chunk
+</ResponseField>
+
+<ResponseField name="tracking_id" type="string">
+  Tracking ID of the chunk
+</ResponseField>
+
+<ResponseField name="time_stamp" type="string">
+  Timestamp of the chunk
+</ResponseField>
+
+<ResponseField name="weight" type="number">
+  Weight for search biasing
+</ResponseField>
+
+<ResponseField name="num_value" type="number">
+  Numerical value for filtering
+</ResponseField>
+
+<ResponseField name="location" type="object">
+  Geographic location
+  <Expandable title="properties">
+    <ResponseField name="lat" type="number">
+      Latitude
+    </ResponseField>
+    <ResponseField name="lon" type="number">
+      Longitude
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="image_urls" type="array">
+  URLs to images associated with the chunk
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the chunk was created
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp when the chunk was last updated
+</ResponseField>
+
+## Status Codes
+
+<ResponseField name="200" type="Success">
+  Chunk successfully retrieved
+</ResponseField>
+
+<ResponseField name="400" type="Error">
+  Service error relating to finding a chunk by id or tracking_id
+</ResponseField>
+
+<ResponseField name="404" type="Error">
+  Chunk not found
+</ResponseField>

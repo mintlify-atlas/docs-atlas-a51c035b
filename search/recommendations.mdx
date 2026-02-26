@@ -1,0 +1,710 @@
+---
+title: Recommendation Engine
+description: Build powerful recommendation systems using Trieve's vector-based and collaborative filtering
+---
+
+Trieve's recommendation engine finds similar chunks based on positive and negative examples. Unlike search, which starts with a text query, recommendations start with existing chunks to find more like them.
+
+## How Recommendations Work
+
+<Steps>
+  <Step title="Provide Examples">
+    Supply positive examples (chunks you want more of) and optionally negative examples (chunks to avoid).
+  </Step>
+  
+  <Step title="Strategy Selection">
+    Choose between:
+    - **Average Vector**: Compute average of positive/negative vectors for pseudo-search
+    - **Best Score**: HNSW navigation with heuristic scoring (more advanced)
+  </Step>
+  
+  <Step title="Vector Space Search">
+    Trieve searches Qdrant for similar chunks based on your selected recommendation type (semantic, fulltext, or BM25).
+  </Step>
+  
+  <Step title="Filtering & Ranking">
+    Apply filters and return ranked recommendations.
+  </Step>
+</Steps>
+
+## Basic Usage
+
+<CodeGroup>
+```javascript JavaScript
+const response = await fetch('https://api.trieve.ai/api/chunk/recommend', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    positive_chunk_ids: [
+      'd290f1ee-6c54-4b01-90e6-d701748f0851',
+      'a123b456-7c89-0d12-34e5-678901234567'
+    ],
+    limit: 10,
+    recommend_type: 'semantic'
+  })
+});
+
+const data = await response.json();
+console.log(data.chunks);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.trieve.ai/api/chunk/recommend',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'positive_chunk_ids': [
+            'd290f1ee-6c54-4b01-90e6-d701748f0851',
+            'a123b456-7c89-0d12-34e5-678901234567'
+        ],
+        'limit': 10,
+        'recommend_type': 'semantic'
+    }
+)
+
+data = response.json()
+print(data['chunks'])
+```
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/chunk/recommend \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -d '{
+    "positive_chunk_ids": [
+      "d290f1ee-6c54-4b01-90e6-d701748f0851",
+      "a123b456-7c89-0d12-34e5-678901234567"
+    ],
+    "limit": 10,
+    "recommend_type": "semantic"
+  }'
+```
+</CodeGroup>
+
+## Recommendation Types
+
+The `recommend_type` parameter determines which vector space to use:
+
+<Tabs>
+  <Tab title="Semantic">
+    **Recommend Type**: `"semantic"`
+    
+    Uses dense embedding vectors for conceptual similarity.
+    
+    **Best for**:
+    - Content recommendations
+    - "More like this" features
+    - Topic-based discovery
+    - Cross-lingual similarity (with multilingual models)
+    
+    **Example**:
+    ```javascript
+    {
+      "positive_chunk_ids": ["chunk-about-python"],
+      "recommend_type": "semantic"
+    }
+    ```
+    Finds chunks about programming, even if they discuss other languages.
+  </Tab>
+  
+  <Tab title="Full-Text">
+    **Recommend Type**: `"fulltext"` or `"full_text"`
+    
+    Uses SPLADE sparse vectors for keyword-based similarity.
+    
+    **Best for**:
+    - Similar keyword patterns
+    - Technical content with specific terminology
+    - When exact terms matter
+    
+    **Example**:
+    ```javascript
+    {
+      "positive_chunk_ids": ["api-docs-chunk"],
+      "recommend_type": "fulltext"
+    }
+    ```
+    Finds chunks with similar API terminology and structure.
+  </Tab>
+  
+  <Tab title="BM25">
+    **Recommend Type**: `"bm25"`
+    
+    Uses BM25 sparse vectors for traditional keyword similarity.
+    
+    **Best for**:
+    - Fast recommendations
+    - Keyword-based similarity
+    - Legacy system compatibility
+    
+    **Example**:
+    ```javascript
+    {
+      "positive_chunk_ids": ["product-description"],
+      "recommend_type": "bm25"
+    }
+    ```
+    Finds products with similar keywords in descriptions.
+  </Tab>
+</Tabs>
+
+<Note>
+  **Default**: If `recommend_type` is not specified, it defaults to `"semantic"`.
+</Note>
+
+## Recommendation Strategies
+
+### Average Vector Strategy
+
+```javascript
+{
+  "positive_chunk_ids": [
+    "chunk-1",
+    "chunk-2"
+  ],
+  "negative_chunk_ids": [
+    "chunk-3"
+  ],
+  "strategy": "average_vector",  // Default
+  "recommend_type": "semantic"
+}
+```
+
+<Info>
+  **How it works**: 
+  1. Retrieves vectors for all positive and negative chunks
+  2. Computes weighted average: `avg = (Σ positive_vectors - Σ negative_vectors) / count`
+  3. Performs vector search using this average vector
+  4. Returns similar chunks
+  
+  **Requirements**: At least one positive chunk (can have only negatives for "dissimilar" search).
+</Info>
+
+### Best Score Strategy
+
+```javascript
+{
+  "positive_chunk_ids": ["chunk-1"],
+  "negative_chunk_ids": ["chunk-2", "chunk-3"],
+  "strategy": "best_score",
+  "recommend_type": "semantic"
+}
+```
+
+<Info>
+  **How it works**:
+  1. Navigates the HNSW graph with a custom scoring heuristic
+  2. Prefers edges where the candidate point is:
+     - Closer to positive examples
+     - Farther from negative examples
+  3. More sophisticated than average vector
+  4. Can work with only negatives (find dissimilar content)
+  
+  **Advantages**: Better for complex relationships, can handle only-negative scenarios.
+</Info>
+
+### Strategy Comparison
+
+| Feature | Average Vector | Best Score |
+|---------|----------------|------------|
+| Speed | Faster | Slower |
+| Complexity | Simple | Advanced |
+| Only positives | ✓ Yes | ✓ Yes |
+| Only negatives | ✗ No | ✓ Yes |
+| Both pos/neg | ✓ Yes | ✓ Yes |
+| Accuracy | Good | Better |
+| Use case | Standard recommendations | Complex filtering |
+
+## Using Tracking IDs
+
+You can use tracking IDs instead of chunk IDs:
+
+```javascript
+{
+  "positive_tracking_ids": [
+    "article-2024-001",
+    "article-2024-002"
+  ],
+  "negative_tracking_ids": [
+    "article-2024-spam"
+  ],
+  "strategy": "average_vector",
+  "limit": 10
+}
+```
+
+<Note>
+  You can mix and match: use both chunk IDs and tracking IDs in the same request.
+</Note>
+
+## Filters with Recommendations
+
+Apply filters to narrow recommendations:
+
+```javascript
+{
+  "positive_chunk_ids": ["chunk-about-ml"],
+  "recommend_type": "semantic",
+  "limit": 10,
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_any": ["tutorial", "guide"]
+      },
+      {
+        "field": "time_stamp",
+        "date_range": {
+          "gte": "2024-01-01T00:00:00"
+        }
+      }
+    ],
+    "must_not": [
+      {
+        "field": "tag_set",
+        "match_any": ["deprecated"]
+      }
+    ]
+  }
+}
+```
+
+## Use Cases
+
+### Content Recommendation
+
+```javascript
+// User liked these articles
+const response = await fetch('https://api.trieve.ai/api/chunk/recommend', {
+  method: 'POST',
+  headers: {...},
+  body: JSON.stringify({
+    positive_chunk_ids: userLikedArticles,  // Articles user liked
+    negative_chunk_ids: userDislikedArticles,  // Articles user disliked
+    recommend_type: 'semantic',
+    strategy: 'average_vector',
+    limit: 20,
+    filters: {
+      must: [
+        {
+          field: 'tag_set',
+          match_any: ['published']
+        }
+      ],
+      must_not: [
+        {
+          // Exclude already seen
+          ids: userSeenArticles
+        }
+      ]
+    }
+  })
+});
+```
+
+### Product Recommendations
+
+```javascript
+{
+  "positive_chunk_ids": [currentProductId],
+  "recommend_type": "semantic",
+  "limit": 5,
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.in_stock",
+        "boolean": true
+      },
+      {
+        "field": "num_value",  // Price within 20% of current product
+        "range": {
+          "gte": currentPrice * 0.8,
+          "lte": currentPrice * 1.2
+        }
+      }
+    ],
+    "must_not": [
+      {
+        "ids": [currentProductId]  // Exclude current product
+      }
+    ]
+  }
+}
+```
+
+### Similar Documentation
+
+```javascript
+{
+  "positive_tracking_ids": [currentDocId],
+  "recommend_type": "fulltext",  // Keyword-based for technical content
+  "strategy": "average_vector",
+  "limit": 10,
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_any": ["api-docs", "tutorial", "guide"]
+      },
+      {
+        "field": "metadata.version",
+        "match_any": ["v2", "latest"]
+      }
+    ],
+    "must_not": [
+      {
+        "field": "tag_set",
+        "match_any": ["deprecated"]
+      }
+    ]
+  }
+}
+```
+
+### "Customers Also Viewed"
+
+```javascript
+// Based on collaborative filtering + content similarity
+{
+  "positive_chunk_ids": recentlyViewedProducts,
+  "recommend_type": "semantic",
+  "strategy": "best_score",
+  "limit": 15,
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.category",
+        "match_any": currentProductCategories
+      },
+      {
+        "field": "metadata.available",
+        "boolean": true
+      }
+    ]
+  }
+}
+```
+
+## Negative Examples Strategy
+
+Negative examples help refine recommendations:
+
+<Tabs>
+  <Tab title="Refine by Exclusion">
+    ```javascript
+    {
+      "positive_chunk_ids": ["science-article-1"],
+      "negative_chunk_ids": ["physics-article-2"],
+      "recommend_type": "semantic"
+    }
+    ```
+    
+    **Result**: Science articles that are NOT about physics (biology, chemistry, etc.)
+  </Tab>
+  
+  <Tab title="Style Preference">
+    ```javascript
+    {
+      "positive_chunk_ids": ["technical-tutorial-1"],
+      "negative_chunk_ids": ["casual-blog-1"],
+      "recommend_type": "semantic"
+    }
+    ```
+    
+    **Result**: Technical content, avoiding casual writing style.
+  </Tab>
+  
+  <Tab title="Quality Filtering">
+    ```javascript
+    {
+      "positive_chunk_ids": ["high-quality-1", "high-quality-2"],
+      "negative_chunk_ids": ["low-quality-1", "spam-1"],
+      "recommend_type": "semantic"
+    }
+    ```
+    
+    **Result**: High-quality content, avoiding spam patterns.
+  </Tab>
+</Tabs>
+
+## Response Format
+
+```json
+{
+  "id": "recommendation-uuid",
+  "chunks": [
+    {
+      "chunk": {
+        "id": "recommended-chunk-uuid",
+        "content": "Content similar to your examples...",
+        "link": "https://example.com/similar",
+        "metadata": {...},
+        "tag_set": ["tutorial", "python"],
+        "created_at": "2024-01-15T10:30:00Z"
+      },
+      "score": 0.89  // Similarity score
+    }
+  ]
+}
+```
+
+<Note>
+  **Score interpretation**: Scores represent similarity to the positive examples (and dissimilarity from negatives). Higher scores indicate better matches.
+</Note>
+
+## Slim Chunks Mode
+
+Reduce response size for better performance:
+
+```javascript
+{
+  "positive_chunk_ids": ["chunk-1"],
+  "recommend_type": "semantic",
+  "limit": 10,
+  "slim_chunks": true  // Excludes content and chunk_html
+}
+```
+
+**Response with slim_chunks**:
+```json
+{
+  "id": "recommendation-uuid",
+  "chunks": [
+    {
+      "chunk": {
+        "id": "chunk-uuid",
+        "link": "https://example.com",
+        "metadata": {...},
+        // content and chunk_html omitted
+      },
+      "score": 0.89
+    }
+  ]
+}
+```
+
+Typically saves 10-50ms in response time.
+
+## Group Recommendations
+
+Recommend groups instead of individual chunks:
+
+```javascript
+fetch('https://api.trieve.ai/api/chunk_group/recommend', {
+  method: 'POST',
+  headers: {...},
+  body: JSON.stringify({
+    positive_group_ids: ['group-1', 'group-2'],
+    recommend_type: 'semantic',
+    limit: 5
+  })
+});
+```
+
+Useful for:
+- Document collections
+- Product families
+- Content series
+- Topic clusters
+
+## Tracking User Interactions
+
+Optionally track recommendations for analytics:
+
+```javascript
+{
+  "positive_chunk_ids": ["chunk-1"],
+  "recommend_type": "semantic",
+  "limit": 10,
+  "user_id": "user-123",
+  "metadata": {
+    "page": "product-detail",
+    "experiment": "recs-v2",
+    "session_id": "session-abc"
+  }
+}
+```
+
+This data appears in your analytics for:
+- A/B testing recommendation strategies
+- Understanding user preferences
+- Measuring recommendation CTR
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Positive Example Selection">
+    - **2-5 examples**: Good balance for most use cases
+    - **1 example**: Use for "more like this" features
+    - **5-10 examples**: For complex taste profiles
+    - **10+ examples**: Diminishing returns, consider filtering instead
+    
+    **Quality over quantity**: 2 highly relevant examples beat 10 mediocre ones.
+  </Accordion>
+  
+  <Accordion title="Negative Example Usage">
+    - Use sparingly (1-3 typically enough)
+    - Best for filtering out specific unwanted attributes
+    - More negatives can over-constrain recommendations
+    - Test with and without negatives
+  </Accordion>
+  
+  <Accordion title="Strategy Selection">
+    **Use Average Vector when**:
+    - You have clear positive examples
+    - Performance matters
+    - Simple "more like this" use case
+    
+    **Use Best Score when**:
+    - Complex filtering needed
+    - You want to explore with only negatives
+    - Higher accuracy is critical
+  </Accordion>
+  
+  <Accordion title="Recommendation Type">
+    - **Semantic**: Default, works for most content
+    - **Fulltext**: Technical docs, code, specific terminology
+    - **BM25**: Fast, keyword-based, legacy compatibility
+    
+    Test different types to see what works for your content.
+  </Accordion>
+  
+  <Accordion title="Combining with Filters">
+    Always filter out:
+    - Already consumed content (exclude by ID)
+    - Unavailable items (out of stock, unpublished)
+    - Inappropriate content for user
+    
+    Consider filtering by:
+    - Recency (recent content often preferred)
+    - Category (stay in similar domain)
+    - Quality indicators (ratings, views, etc.)
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Patterns
+
+### Multi-Stage Recommendations
+
+```javascript
+// Stage 1: Get broad recommendations
+const stage1 = await getRecommendations({
+  positive_chunk_ids: userLikes,
+  recommend_type: 'semantic',
+  limit: 50  // Overfetch
+});
+
+// Stage 2: Re-rank with more specific criteria
+const stage2 = await getRecommendations({
+  positive_chunk_ids: stage1.chunks.slice(0, 10).map(c => c.chunk.id),
+  recommend_type: 'fulltext',  // Different type for re-ranking
+  limit: 10
+});
+```
+
+### Personalized + Trending
+
+```javascript
+// Blend personalized recommendations with trending content
+const personalized = await getRecommendations({
+  positive_chunk_ids: userHistory,
+  recommend_type: 'semantic',
+  limit: 7
+});
+
+const trending = await search({
+  search_type: 'semantic',
+  query: 'popular recent content',
+  filters: {
+    must: [{
+      field: 'time_stamp',
+      date_range: { gte: last7Days }
+    }]
+  },
+  sort_options: {
+    sort_by: {
+      field: 'metadata.views',
+      direction: 'desc'
+    }
+  },
+  limit: 3
+});
+
+// Interleave: [P, P, T, P, P, T, P, P, T, P]
+const blended = interleave(personalized, trending, [2, 1]);
+```
+
+### Collaborative Filtering Simulation
+
+```javascript
+// Find users with similar taste
+const similarUsers = await findSimilarUsers(currentUser);
+
+// Get what similar users liked that current user hasn't seen
+const recommendations = await getRecommendations({
+  positive_chunk_ids: similarUsers.flatMap(u => u.likedChunks),
+  filters: {
+    must_not: [
+      { ids: currentUser.seenChunks }
+    ]
+  },
+  recommend_type: 'semantic',
+  limit: 20
+});
+```
+
+## Troubleshooting
+
+<Warning>
+  **No recommendations returned?**
+  - Verify positive_chunk_ids or positive_tracking_ids exist
+  - Check if filters are too restrictive
+  - Ensure chunks have embeddings (were properly indexed)
+  - Try increasing limit
+</Warning>
+
+<Warning>
+  **Poor quality recommendations?**
+  - Try different recommend_type (semantic vs fulltext)
+  - Use more specific positive examples
+  - Add negative examples to filter out unwanted patterns
+  - Switch to best_score strategy
+  - Apply more filters
+</Warning>
+
+<Warning>
+  **Slow performance?**
+  - Reduce number of positive/negative examples
+  - Use average_vector instead of best_score
+  - Enable slim_chunks
+  - Reduce limit
+  - Cache frequent recommendations
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Filters" icon="filter" href="/search/filters">
+    Apply advanced filters to recommendations
+  </Card>
+  <Card title="Semantic Search" icon="brain" href="/search/semantic-search">
+    Understand vector similarity
+  </Card>
+  <Card title="Hybrid Search" icon="layer-group" href="/search/hybrid-search">
+    Compare with search functionality
+  </Card>
+  <Card title="Search Overview" icon="book" href="/search/overview">
+    Back to search overview
+  </Card>
+</CardGroup>

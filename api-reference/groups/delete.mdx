@@ -1,0 +1,85 @@
+---
+title: 'Delete Group'
+description: 'Delete a chunk group and optionally its chunks'
+---
+
+## DELETE /chunk_group/{group_id}
+
+This will delete a chunk_group. If you set delete_chunks to true, it will also delete the chunks within the group.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key for authentication. Must have admin role.
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="group_id" type="string" required>
+  Id of the group you want to delete.
+</ParamField>
+
+### Query Parameters
+
+<ParamField query="delete_chunks" type="boolean" required>
+  Delete the chunks within the group. If set to true, all chunks that are members of this group will be permanently deleted.
+</ParamField>
+
+### Response
+
+Returns a 204 No Content response on success.
+
+<RequestExample>
+
+```bash cURL
+curl -X DELETE "https://api.trieve.ai/api/chunk_group/3c90c3cc-0d44-4b50-8888-8dd25736052a?delete_chunks=false" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+});
+
+await trieve.deleteChunkGroup({
+  group_id: "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+  delete_chunks: false
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="tr-********************************",
+    dataset_id="d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+)
+
+trieve.delete_chunk_group(
+    group_id="3c90c3cc-0d44-4b50-8888-8dd25736052a",
+    delete_chunks=False
+)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```text 204 No Content
+```
+
+```json 400 Bad Request
+{
+  "message": "Service error relating to deleting the chunkGroup"
+}
+```
+
+</ResponseExample>

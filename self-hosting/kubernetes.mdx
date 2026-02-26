@@ -1,0 +1,534 @@
+---
+title: 'Kubernetes Deployment'
+description: 'Deploy Trieve on Kubernetes using Helm charts for production environments'
+---
+
+## Overview
+
+Trieve provides official Helm charts for production-grade Kubernetes deployments. This method offers:
+
+- Auto-scaling and high availability
+- Resource management and isolation
+- Rolling updates and rollbacks
+- Production-ready observability
+
+## Prerequisites
+
+- Kubernetes cluster 1.24+
+- Helm 3.8+
+- kubectl configured for your cluster
+- 32 GB RAM minimum across nodes
+- 100 GB storage (SSD recommended)
+- Optional: GPU nodes for embedding models
+
+## Quick Start
+
+<Steps>
+<Step title="Clone the repository">
+
+```bash
+git clone https://github.com/devflowinc/trieve.git
+cd trieve/charts/trieve
+```
+
+</Step>
+
+<Step title="Review values.yaml">
+
+The main configuration file is `values.yaml`. Review and customize:
+
+```bash
+cat values.yaml
+```
+
+See [Configuration](/self-hosting/configuration) for detailed options.
+
+</Step>
+
+<Step title="Install dependencies">
+
+```bash
+helm dependency update
+```
+
+This installs subcharts for PostgreSQL, Redis, Qdrant, Keycloak, and ClickHouse.
+
+</Step>
+
+<Step title="Deploy Trieve">
+
+```bash
+helm install trieve . \
+  --namespace trieve \
+  --create-namespace \
+  --values values.yaml
+```
+
+</Step>
+
+<Step title="Verify deployment">
+
+```bash
+kubectl get pods -n trieve
+kubectl get services -n trieve
+```
+
+</Step>
+</Steps>
+
+## Helm Chart Structure
+
+The Helm chart is located at `charts/trieve/` and includes:
+
+```
+trieve/
+├── Chart.yaml              # Chart metadata
+├── values.yaml             # Default configuration
+├── values.aws.yaml         # AWS-specific overrides
+├── values.gcp.yaml         # GCP-specific overrides
+├── values.az.yaml          # Azure-specific overrides
+├── charts/                 # Dependency subcharts
+│   ├── postgres/          # CloudNativePG operator
+│   ├── keycloak/          # Keycloak operator
+│   └── clickhouse/        # ClickHouse operator
+└── templates/             # Kubernetes manifests
+    ├── deployments/       # Service deployments
+    ├── workers/           # Worker deployments
+    ├── services/          # Service definitions
+    └── ingress.yaml       # Ingress configuration
+```
+
+## Chart Dependencies
+
+The chart includes the following subcharts:
+
+| Dependency | Version | Description | Condition |
+|------------|---------|-------------|----------|
+| qdrant | 1.13.4 | Vector database | `qdrant.enabled` |
+| redis | 20.10.0 | Cache and queue | `redis.enabled` |
+| postgres | - | CloudNativePG | `postgres.enabled` |
+| keycloak | - | Auth provider | `keycloak.enabled` |
+| clickhouse | - | Analytics DB | `clickhouse.enabled` |
+
+## Configuration
+
+### Basic Configuration
+
+Key settings in `values.yaml`:
+
+```yaml values.yaml
+global:
+  image:
+    registry: trieve
+    imagePullPolicy: Always
+
+containers:
+  server:
+    tag: sha-2b6d5eb
+    repository: server
+    resources: {}
+  ingest:
+    tag: sha-2b6d5eb
+    repository: ingest
+    replicas: 3
+    resources: {}
+```
+
+### Database Configuration
+
+```yaml values.yaml
+postgres:
+  enabled: true
+  installCrds: true
+  clusterSpec:
+    instances: 1
+    storage:
+      size: 10Gi
+```
+
+### Qdrant Configuration
+
+```yaml values.yaml
+qdrant:
+  enabled: true
+  url: http://trieve-local-qdrant:6334
+  apiKey: "qdrant-api-key"
+  replicaCount: 3
+  requests:
+    cpu: 1
+    memory: 10Gi
+```
+
+### Redis Configuration
+
+```yaml values.yaml
+redis:
+  enabled: true
+  auth:
+    password: "password"
+  master:
+    persistence:
+      enabled: false
+    resources:
+      limits:
+        memory: 5Gi
+  replica:
+    replicaCount: 0
+```
+
+### ClickHouse Configuration
+
+```yaml values.yaml
+clickhouse:
+  enabled: true
+  connection:
+    clickhouseDB: default
+    clickhouseUser: default
+    clickhousePassword: clickhouse
+    clickhouseUrl: http://clickhouse-trieve-local-trieve:8123
+```
+
+### Embedding Services
+
+```yaml values.yaml
+embeddings:
+  - name: jina
+    model: jinaai/jina-embeddings-v2-base-en
+    tag: "89-1.2"
+    registry: ghcr.io/huggingface
+    repository: text-embeddings-inference
+    useGpu: false
+  - name: splade-doc
+    model: naver/efficient-splade-VI-BT-large-doc
+    useGpu: false
+    args: ["--pooling", "splade"]
+  - name: reranker
+    model: BAAI/bge-reranker-large
+    useGpu: false
+```
+
+### Ingress Configuration
+
+```yaml values.yaml
+domains:
+  dashboard:
+    disabled: false
+    host: dashboard.yourdomain.com
+    class: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    tls:
+      - hosts:
+          - dashboard.yourdomain.com
+        secretName: dashboard-tls
+```
+
+## Cloud Provider Deployments
+
+### Google Cloud Platform (GCP)
+
+Use the included Terraform configuration:
+
+```bash
+cd terraform/gcloud
+
+# Edit variables
+vim variables.tf
+
+# Initialize Terraform
+terraform init
+
+# Create cluster
+terraform apply
+```
+
+Then deploy with GCP-specific values:
+
+```bash
+helm install trieve charts/trieve \
+  --namespace trieve \
+  --create-namespace \
+  --values charts/trieve/values.gcp.yaml
+```
+
+### Amazon Web Services (AWS)
+
+```bash
+cd terraform/aws
+terraform init
+terraform apply
+
+helm install trieve charts/trieve \
+  --namespace trieve \
+  --create-namespace \
+  --values charts/trieve/values.aws.yaml
+```
+
+### Microsoft Azure
+
+```bash
+cd terraform/azure
+terraform init
+terraform apply
+
+helm install trieve charts/trieve \
+  --namespace trieve \
+  --create-namespace \
+  --values charts/trieve/values.az.yaml
+```
+
+## GPU Support
+
+For faster embedding generation, deploy on nodes with GPUs:
+
+### GCP GPU Configuration
+
+The Terraform configuration creates GPU node pools:
+
+```hcl terraform/gcloud/main.tf
+resource "google_container_node_pool" "gpu_nodes" {
+  name = "gpu-compute-${var.cluster_name}"
+  machine_type = "g2-standard-4"
+  
+  guest_accelerator {
+    type = "nvidia-l4"
+    count = 1
+    gpu_sharing_config {
+      gpu_sharing_strategy = "TIME_SHARING"
+      max_shared_clients_per_gpu = 10
+    }
+  }
+  
+  taint {
+    effect = "NO_SCHEDULE"
+    key = "nvidia.com/gpu"
+    value = "present"
+  }
+}
+```
+
+### Enable GPU for Embeddings
+
+```yaml values.yaml
+embeddings:
+  - name: jina
+    model: jinaai/jina-embeddings-v2-base-en
+    useGpu: true  # Enable GPU
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+```
+
+## Scaling
+
+### Horizontal Pod Autoscaling
+
+Create HPA for the server:
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server-hpa
+  namespace: trieve
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: server
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+### Vertical Pod Autoscaling
+
+Enable VPA in the cluster:
+
+```yaml terraform/gcloud/main.tf
+vertical_pod_autoscaling {
+  enabled = true
+}
+```
+
+### Worker Scaling
+
+Adjust worker replicas in `values.yaml`:
+
+```yaml values.yaml
+containers:
+  ingest:
+    replicas: 5  # Increase for more throughput
+  file_worker:
+    replicas: 3
+  delete_worker:
+    replicas: 2
+```
+
+## Operations
+
+### Upgrade Deployment
+
+```bash
+# Update dependencies
+helm dependency update
+
+# Upgrade release
+helm upgrade trieve . \
+  --namespace trieve \
+  --values values.yaml
+```
+
+### Rollback
+
+```bash
+# View release history
+helm history trieve -n trieve
+
+# Rollback to previous version
+helm rollback trieve -n trieve
+
+# Rollback to specific revision
+helm rollback trieve 2 -n trieve
+```
+
+### View Logs
+
+```bash
+# Server logs
+kubectl logs -f deployment/server -n trieve
+
+# Worker logs
+kubectl logs -f deployment/ingestion-worker -n trieve
+
+# All pods with label
+kubectl logs -l app.kubernetes.io/name=server -n trieve
+```
+
+### Access Services
+
+```bash
+# Port forward to server
+kubectl port-forward svc/server-service 8090:8090 -n trieve
+
+# Port forward to dashboard
+kubectl port-forward svc/dashboard-service 5173:80 -n trieve
+```
+
+## Monitoring
+
+### Pod Health
+
+```bash
+# Check pod status
+kubectl get pods -n trieve
+
+# Describe problematic pod
+kubectl describe pod <pod-name> -n trieve
+
+# Check events
+kubectl get events -n trieve --sort-by='.lastTimestamp'
+```
+
+### Resource Usage
+
+```bash
+# Node resource usage
+kubectl top nodes
+
+# Pod resource usage
+kubectl top pods -n trieve
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Pods in CrashLoopBackOff">
+    Check pod logs:
+    ```bash
+    kubectl logs <pod-name> -n trieve --previous
+    kubectl describe pod <pod-name> -n trieve
+    ```
+    
+    Common causes:
+    - Missing environment variables
+    - Database connection failures
+    - Insufficient resources
+  </Accordion>
+
+  <Accordion title="Pending pods">
+    Check node resources and pod requirements:
+    ```bash
+    kubectl describe pod <pod-name> -n trieve
+    kubectl get nodes
+    kubectl top nodes
+    ```
+    
+    May need to:
+    - Add more nodes
+    - Reduce resource requests
+    - Remove taints/add tolerations
+  </Accordion>
+
+  <Accordion title="Qdrant connection errors">
+    Verify Qdrant is running:
+    ```bash
+    kubectl get pods -l app=qdrant -n trieve
+    kubectl logs -l app=qdrant -n trieve
+    ```
+    
+    Check service DNS:
+    ```bash
+    kubectl get svc -n trieve | grep qdrant
+    ```
+  </Accordion>
+
+  <Accordion title="Database migration failures">
+    Check PostgreSQL status:
+    ```bash
+    kubectl get pods -l app.kubernetes.io/name=postgres -n trieve
+    kubectl logs -l app.kubernetes.io/name=postgres -n trieve
+    ```
+    
+    Manually run migrations if needed:
+    ```bash
+    kubectl exec -it deployment/server -n trieve -- /app/run-migrations
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Production Best Practices
+
+<Warning>
+Before going to production:
+
+1. **Use managed databases** - Consider using cloud provider managed PostgreSQL, Redis
+2. **Enable persistence** - Configure PersistentVolumes for stateful services
+3. **Set resource limits** - Define CPU and memory limits for all containers
+4. **Configure backups** - Set up regular backups for databases and Qdrant
+5. **Enable monitoring** - Deploy Prometheus and Grafana for observability
+6. **Use secrets management** - Store credentials in Kubernetes Secrets or external vaults
+7. **Configure network policies** - Restrict pod-to-pod communication
+8. **Set up ingress** - Use nginx-ingress or similar with TLS certificates
+9. **Review security** - Change all default passwords and API keys
+</Warning>
+
+### Recommended Node Configuration
+
+- **Standard nodes**: n2-standard-4 or equivalent (4 vCPU, 16 GB RAM)
+- **GPU nodes**: g2-standard-4 with NVIDIA L4 or T4
+- **Qdrant nodes**: Dedicated nodes with local SSD for best performance
+
+## Next Steps
+
+- Configure [environment variables](/self-hosting/configuration)
+- Set up [monitoring and alerting](/analytics/overview)
+- Review [scaling guidelines](/self-hosting/configuration#scaling)
+- Configure [backup procedures](/self-hosting/configuration#backups)

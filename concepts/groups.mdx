@@ -1,0 +1,484 @@
+---
+title: Groups
+description: Organize and manage collections of related chunks with groups in Trieve
+---
+
+## What is a Group?
+
+A group (also called a "chunk group") is a collection of chunks that are logically related. Groups provide a way to:
+
+- Organize chunks hierarchically
+- Associate chunks with source documents or entities
+- Perform group-level operations (search within group, recommend similar groups)
+- Maintain relationships between chunks
+
+Groups are flexible containers - a chunk can belong to multiple groups, and groups can be created and managed independently of chunks.
+
+## Why Groups Matter
+
+Groups enable powerful organizational patterns:
+
+1. **Document Structure**: Group chunks from the same document together
+2. **Hierarchical Search**: Search within specific groups to narrow results
+3. **Recommendation**: Find similar groups based on their chunks
+4. **Batch Operations**: Update or delete all chunks in a group
+5. **Multi-Document Context**: Reference multiple related documents in RAG
+
+## Group Properties
+
+From the source code at `server/src/handlers/group_handler.rs:66-90`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | string | Human-readable group name |
+| `description` | string | Optional description of the group |
+| `tracking_id` | string | External system identifier (unique) |
+| `metadata` | object | Arbitrary JSON for filtering |
+| `tag_set` | string[] | Tags for categorizing groups |
+| `dataset_id` | uuid | Dataset this group belongs to |
+
+<Info>
+Groups themselves don't contain content - they're containers that reference chunks through bookmarks (relationships).
+</Info>
+
+## Creating Groups
+
+### Single Group Creation
+
+```typescript
+const group = await trieve.createGroup({
+  name: "Product Documentation",
+  description: "All documentation for Product X",
+  tracking_id: "product-x-docs",
+  metadata: {
+    product_id: "prod-123",
+    version: "2.0"
+  },
+  tag_set: ["documentation", "product-x"]
+});
+```
+
+### Batch Group Creation
+
+Create up to 1000 groups at once (from `server/src/handlers/group_handler.rs:198-203`):
+
+```typescript
+const groups = await trieve.createGroups([
+  {
+    name: "Chapter 1",
+    tracking_id: "ch-1"
+  },
+  {
+    name: "Chapter 2",
+    tracking_id: "ch-2"
+  }
+  // ... up to 1000 groups
+]);
+```
+
+### Upserting Groups
+
+Create or update groups based on `tracking_id`:
+
+```typescript
+const group = await trieve.createGroup({
+  name: "Updated Product Docs",
+  tracking_id: "product-x-docs",
+  upsert_by_tracking_id: true // Update if exists
+});
+```
+
+## Adding Chunks to Groups
+
+### During Chunk Creation
+
+Associate chunks with groups when creating them:
+
+```typescript
+await trieve.createChunk({
+  chunk_html: "Content from Product X documentation",
+  group_ids: ["group-uuid-1"],
+  group_tracking_ids: ["product-x-docs"]
+});
+```
+
+If a group with the `group_tracking_id` doesn't exist, it will be created automatically.
+
+### After Chunk Creation
+
+Add existing chunks to groups:
+
+```typescript
+// By group ID
+await trieve.addChunkToGroup({
+  group_id: "group-uuid",
+  chunk_id: "chunk-uuid"
+});
+
+// By group tracking ID
+await trieve.addChunkToGroupByTrackingId({
+  group_tracking_id: "product-x-docs",
+  chunk_tracking_id: "chunk-track-123"
+});
+```
+
+## Retrieving Group Chunks
+
+Get all chunks in a group with pagination:
+
+```typescript
+const result = await trieve.getChunksInGroup({
+  group_id: "group-uuid",
+  page: 1
+});
+
+console.log(result.chunks); // Array of chunk metadata
+console.log(result.total_pages); // Total pages available
+```
+
+The response includes full chunk metadata, allowing you to display or process all chunks in the group.
+
+## Searching Within Groups
+
+Perform searches scoped to specific groups:
+
+```typescript
+const results = await trieve.searchWithinGroup({
+  query: "authentication",
+  group_ids: ["api-docs-group"],
+  search_type: "hybrid",
+  page_size: 10
+});
+```
+
+This returns only chunks that:
+1. Match the query
+2. Belong to the specified groups
+
+Perfect for implementing "Search within document" features.
+
+## Group Recommendation
+
+Find groups similar to a given set of groups (from `server/src/handlers/group_handler.rs:1237-1262`):
+
+```typescript
+const recommendations = await trieve.recommendGroups({
+  positive_group_ids: ["group-1", "group-2"],
+  negative_group_ids: ["group-3"],
+  strategy: "average_vector", // or "best_score"
+  limit: 10
+});
+```
+
+**Strategies:**
+- `average_vector`: Constructs average from positive/negative samples (faster)
+- `best_score`: Uses HNSW navigation heuristic (more accurate)
+
+**Recommendation Types:**
+```typescript
+recommend_type: "semantic" // or "fulltext" or "bm25"
+```
+
+Use cases:
+- "Documents similar to this one"
+- "More content like these chapters"
+- "Related product documentation"
+
+## Group-Level Operations
+
+### Updating Groups
+
+Update group metadata and properties (from `server/src/handlers/group_handler.rs:743-759`):
+
+```typescript
+await trieve.updateGroup({
+  group_id: "group-uuid",
+  name: "Updated Name",
+  description: "New description",
+  metadata: { updated_at: new Date().toISOString() },
+  tag_set: ["updated"],
+  update_chunks: true // Also update chunks with group's tags
+});
+```
+
+<Note>
+When `update_chunks: true`, the group's tags are appended to all chunks in the group. This is useful for propagating group-level categorization to individual chunks.
+</Note>
+
+### Counting Chunks in a Group
+
+Get the total number of chunks in a group:
+
+```typescript
+const count = await trieve.countChunksInGroup({
+  group_id: "group-uuid"
+});
+
+console.log(count.count); // Total chunks
+```
+
+### Removing Chunks from Groups
+
+Remove specific chunks while keeping the group:
+
+```typescript
+await trieve.removeChunkFromGroup({
+  group_id: "group-uuid",
+  chunk_id: "chunk-uuid"
+});
+```
+
+This only removes the relationship - the chunk itself is not deleted.
+
+### Deleting Groups
+
+Delete a group and optionally its chunks:
+
+```typescript
+// Delete group only (chunks remain)
+await trieve.deleteGroup({
+  group_id: "group-uuid",
+  delete_chunks: false
+});
+
+// Delete group and all its chunks
+await trieve.deleteGroup({
+  group_id: "group-uuid",
+  delete_chunks: true
+});
+```
+
+## Relationship to Files
+
+Groups are automatically created when you upload files (from `server/src/operators/file_operator.rs`):
+
+```typescript
+const file = await trieve.uploadFile({
+  file_name: "document.pdf",
+  base64_file: base64Content,
+  group_tracking_id: "doc-group" // Optional custom group
+});
+```
+
+This creates:
+1. A file record
+2. A group associated with the file
+3. Chunks from the file, all belonging to the group
+
+The file-to-group relationship is tracked in the `groups_from_files` table, enabling you to:
+- Find all groups created from files
+- Delete a file's group and chunks together
+- Navigate from file to chunks via the group
+
+## Querying Groups
+
+### Get Groups for Dataset
+
+Retrieve all groups in a dataset with pagination:
+
+```typescript
+const groups = await trieve.getGroupsForDataset({
+  dataset_id: "dataset-uuid",
+  page: 1
+});
+```
+
+### Get Groups for Chunks
+
+Find all groups a set of chunks belongs to:
+
+```typescript
+const groups = await trieve.getGroupsForChunks({
+  chunk_ids: ["chunk-1", "chunk-2"],
+  chunk_tracking_ids: ["chunk-track-1"]
+});
+
+// Returns: [{ chunk_id, groups: [...] }, ...]
+```
+
+Useful for displaying "This content appears in: ..." features.
+
+## Group Tags and Filtering
+
+Groups support tags for categorization:
+
+```typescript
+const group = await trieve.createGroup({
+  name: "API Documentation",
+  tag_set: ["documentation", "api", "v2"]
+});
+
+// When update_chunks is true, these tags are added to chunks:
+await trieve.updateGroup({
+  group_id: "group-uuid",
+  tag_set: ["verified"],
+  update_chunks: true // Propagate to chunks
+});
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="One group per document">
+    For document search applications, create one group per uploaded document. This enables:
+    - Search within document
+    - Document-level recommendations
+    - Easy document deletion (delete group with chunks)
+  </Accordion>
+  
+  <Accordion title="Use tracking_id for external references">
+    Set `tracking_id` to your external system's document ID:
+    ```typescript
+    tracking_id: `doc-${documentId}`
+    ```
+    This allows you to find and manage groups without storing Trieve UUIDs.
+  </Accordion>
+  
+  <Accordion title="Group metadata for filtering">
+    Store document-level metadata in groups:
+    ```typescript
+    metadata: {
+      author: "John Doe",
+      category: "technical",
+      created_at: "2024-02-15",
+      permissions: ["engineering"]
+    }
+    ```
+    Then filter searches by group metadata.
+  </Accordion>
+  
+  <Accordion title="Multiple groups for multi-faceted organization">
+    Chunks can belong to multiple groups:
+    ```typescript
+    group_ids: [
+      "chapter-3",        // Document structure
+      "security-topics", // Topic grouping
+      "featured-content" // Editorial grouping
+    ]
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Document Sections
+
+Organize a document into nested groups:
+
+```typescript
+// Create chapter group
+const chapter = await trieve.createGroup({
+  name: "Chapter 3: Authentication",
+  tracking_id: "ch3",
+  metadata: { document_id: "manual", chapter: 3 }
+});
+
+// Create section groups
+const section1 = await trieve.createGroup({
+  name: "3.1 OAuth Flow",
+  tracking_id: "ch3-sec1",
+  metadata: { document_id: "manual", chapter: 3, section: 1 }
+});
+
+// Add chunks to both chapter and section
+await trieve.createChunk({
+  chunk_html: "OAuth 2.0 flow details...",
+  group_tracking_ids: ["ch3", "ch3-sec1"]
+});
+```
+
+### Topic-Based Grouping
+
+Group content by topic across documents:
+
+```typescript
+// Create topic group
+const topic = await trieve.createGroup({
+  name: "Security Best Practices",
+  tracking_id: "topic-security",
+  tag_set: ["security", "best-practices"]
+});
+
+// Add relevant chunks from any document
+await trieve.createChunk({
+  chunk_html: "Always use HTTPS...",
+  group_tracking_ids: [
+    "doc-123",        // Document group
+    "topic-security" // Topic group
+  ]
+});
+```
+
+### Versioned Documentation
+
+Maintain multiple versions using groups:
+
+```typescript
+const v1Group = await trieve.createGroup({
+  name: "API Docs v1.0",
+  tracking_id: "api-docs-v1",
+  metadata: { version: "1.0" }
+});
+
+const v2Group = await trieve.createGroup({
+  name: "API Docs v2.0",
+  tracking_id: "api-docs-v2",
+  metadata: { version: "2.0" }
+});
+
+// Search specific version
+const v2Results = await trieve.searchWithinGroup({
+  query: "authentication",
+  group_ids: [v2Group.id]
+});
+```
+
+### Collections and Playlists
+
+For content curation:
+
+```typescript
+const collection = await trieve.createGroup({
+  name: "Getting Started Guide",
+  description: "Curated path for new users",
+  tracking_id: "collection-getting-started",
+  metadata: {
+    curated_by: "user-123",
+    order: ["intro", "setup", "first-steps"]
+  }
+});
+```
+
+## Advanced: Group Search Across Groups
+
+Search multiple groups and get results grouped:
+
+```typescript
+const results = await trieve.searchOverGroups({
+  query: "configuration",
+  group_ids: ["doc-1", "doc-2", "doc-3"],
+  page_size: 5, // Chunks per group
+  get_total_pages: true
+});
+
+// Returns:
+// {
+//   group_chunks: [
+//     { group: {...}, chunks: [{...}, ...] },
+//     { group: {...}, chunks: [{...}, ...] }
+//   ]
+// }
+```
+
+Perfect for "Search across these documents" features.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Upload Files" icon="file-arrow-up" href="/concepts/files">
+    Files automatically create groups for organization
+  </Card>
+  <Card title="Search API" icon="magnifying-glass" href="/api-reference/groups/search">
+    Learn how to search within groups
+  </Card>
+</CardGroup>

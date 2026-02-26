@@ -1,0 +1,179 @@
+---
+title: 'Create Group'
+description: 'Create new chunk groups to organize and categorize chunks together'
+---
+
+## POST /chunk_group
+
+Create new chunk_group(s). This is a way to group chunks together. If you try to create a chunk_group with the same tracking_id as an existing chunk_group, this operation will fail. Only 1000 chunk groups can be created at a time.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key for authentication. Must have admin role.
+</ParamField>
+
+### Body
+
+<ParamField body="name" type="string">
+  Name to assign to the chunk_group. Does not need to be unique.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description to assign to the chunk_group. Convenience field for you to avoid having to remember what the group is for.
+</ParamField>
+
+<ParamField body="tracking_id" type="string">
+  Optional tracking id to assign to the chunk_group. This is a unique identifier for the chunk_group.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Optional metadata to assign to the chunk_group. This is a JSON object that can store any additional information you want to associate with the chunks inside of the chunk_group.
+</ParamField>
+
+<ParamField body="tag_set" type="array">
+  Optional tags to assign to the chunk_group. This is a list of strings that can be used to categorize the chunks inside the chunk_group.
+</ParamField>
+
+<ParamField body="upsert_by_tracking_id" type="boolean" default="false">
+  Upsert when a chunk_group with the same tracking_id exists. By default this is false, and the request will fail if a chunk_group with the same tracking_id exists. If this is true, the chunk_group will be updated if a chunk_group with the same tracking_id exists.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  The unique identifier for the created chunk_group.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the chunk_group.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description of the chunk_group.
+</ResponseField>
+
+<ResponseField name="tracking_id" type="string">
+  The tracking id of the chunk_group.
+</ResponseField>
+
+<ResponseField name="tag_set" type="array">
+  The tags assigned to the chunk_group.
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  The metadata associated with the chunk_group.
+</ResponseField>
+
+<ResponseField name="dataset_id" type="string">
+  The dataset id this chunk_group belongs to.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the chunk_group was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp when the chunk_group was last updated.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/chunk_group" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Versions of Oversized T-Shirt",
+    "description": "All versions and colorways of the oversized t-shirt",
+    "tracking_id": "SNOVERSIZEDTSHIRT",
+    "tag_set": ["tshirt", "oversized", "clothing"],
+    "metadata": {
+      "color": "black",
+      "size": "large"
+    },
+    "upsert_by_tracking_id": false
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+});
+
+const group = await trieve.createChunkGroup({
+  name: "Versions of Oversized T-Shirt",
+  description: "All versions and colorways of the oversized t-shirt",
+  tracking_id: "SNOVERSIZEDTSHIRT",
+  tag_set: ["tshirt", "oversized", "clothing"],
+  metadata: {
+    color: "black",
+    size: "large"
+  },
+  upsert_by_tracking_id: false
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="tr-********************************",
+    dataset_id="d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+)
+
+group = trieve.create_chunk_group(
+    name="Versions of Oversized T-Shirt",
+    description="All versions and colorways of the oversized t-shirt",
+    tracking_id="SNOVERSIZEDTSHIRT",
+    tag_set=["tshirt", "oversized", "clothing"],
+    metadata={
+        "color": "black",
+        "size": "large"
+    },
+    upsert_by_tracking_id=False
+)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 Success
+{
+  "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+  "name": "Versions of Oversized T-Shirt",
+  "description": "All versions and colorways of the oversized t-shirt",
+  "tracking_id": "SNOVERSIZEDTSHIRT",
+  "tag_set": ["tshirt", "oversized", "clothing"],
+  "metadata": {
+    "color": "black",
+    "size": "large"
+  },
+  "dataset_id": "d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a",
+  "created_at": "2021-01-01 00:00:00.000",
+  "updated_at": "2021-01-01 00:00:00.000"
+}
+```
+
+```json 400 Bad Request
+{
+  "message": "Service error relating to creating the chunk_group(s)"
+}
+```
+
+```json 413 Payload Too Large
+{
+  "message": "Service error indicating more 1000 chunk groups are trying to be created at once"
+}
+```
+
+</ResponseExample>

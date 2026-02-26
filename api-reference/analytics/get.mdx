@@ -1,0 +1,114 @@
+---
+title: 'Get Analytics'
+openapi: 'POST /api/analytics'
+---
+
+This endpoint allows you to view analytics for a dataset using a structured query. It provides a flexible way to retrieve various analytics metrics based on the query parameters you provide.
+
+## Authentication
+
+Requires an API key with `admin` role.
+
+## Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key in the format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Request Body
+
+<ParamField body="query" type="object" required>
+  A structured analytics query object that specifies what metrics to retrieve. The query structure depends on the type of analytics you want to fetch.
+</ParamField>
+
+## Response
+
+<ResponseField name="result" type="object">
+  The analytics results based on your query. The structure varies depending on the query type.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/analytics \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": {
+      "type": "search_metrics",
+      "filter": {
+        "date_range": {
+          "gt": "2024-01-01T00:00:00Z"
+        }
+      }
+    }
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const analytics = await trieve.analytics.getAnalytics({
+  query: {
+    type: "search_metrics",
+    filter: {
+      date_range: {
+        gt: "2024-01-01T00:00:00Z"
+      }
+    }
+  }
+});
+
+console.log(analytics);
+```
+
+```python Python
+import requests
+
+url = "https://api.trieve.ai/api/analytics"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "TR-Dataset": "YOUR_DATASET_ID",
+    "Content-Type": "application/json"
+}
+data = {
+    "query": {
+        "type": "search_metrics",
+        "filter": {
+            "date_range": {
+                "gt": "2024-01-01T00:00:00Z"
+            }
+        }
+    }
+}
+
+response = requests.post(url, json=data, headers=headers)
+print(response.json())
+```
+
+</CodeGroup>
+
+## Use Cases
+
+- Retrieve comprehensive analytics metrics for your dataset
+- Build custom analytics dashboards
+- Generate reports on search performance
+- Monitor usage patterns and trends
+- Analyze user behavior across your application
+
+## Related Endpoints
+
+- [Get CTR Analytics](/api-reference/analytics/ctr) - Retrieve click-through rate analytics
+- [Get Search Analytics Queries](/api-reference/analytics/queries) - Get detailed query analytics

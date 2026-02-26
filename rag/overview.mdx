@@ -1,0 +1,126 @@
+---
+title: RAG & Chat Overview
+description: Build conversational AI with Retrieval Augmented Generation and topic-based memory
+---
+
+## What is RAG?
+
+Retrieval Augmented Generation (RAG) combines the power of search with large language models to provide accurate, contextual responses grounded in your data. Instead of relying solely on the LLM's training data, RAG retrieves relevant information from your knowledge base and uses it to generate informed responses.
+
+## How Trieve RAG Works
+
+Trieve's RAG implementation follows this workflow:
+
+1. **User Message** - A user sends a message to a topic
+2. **Retrieval** - Trieve searches your dataset for relevant chunks using semantic, fulltext, or hybrid search
+3. **Context Building** - Retrieved chunks are formatted and added to the LLM context window
+4. **Generation** - The LLM generates a response using the retrieved context
+5. **Streaming** - The response is streamed back to the user in real-time
+
+<Note>
+The response format includes chunks first, followed by the message: `[chunks]||message`. This allows you to display citations alongside the generated response.
+</Note>
+
+## Topic-Based Memory Management
+
+Topics are the foundation of Trieve's chat system. They act as coordinators for conversation history, similar to chat threads in ChatGPT.
+
+### Key Concepts
+
+<CardGroup cols={2}>
+  <Card title="Topics" icon="comments">
+    Containers for conversation history attached to an `owner_id` (typically a user ID or browser fingerprint)
+  </Card>
+  <Card title="Messages" icon="message">
+    Individual user or assistant messages within a topic, ordered by `sort_order`
+  </Card>
+  <Card title="Context Window" icon="window-maximize">
+    Recent messages included in the LLM prompt (default: 10 messages)
+  </Card>
+  <Card title="RAG Context" icon="database">
+    Retrieved chunks added to the context window for grounded responses
+  </Card>
+</CardGroup>
+
+## RAG Configuration
+
+Trieve offers extensive control over the RAG process:
+
+### Search Configuration
+
+- **Search Type** - `semantic`, `fulltext`, `hybrid`, or `bm25`
+- **Page Size** - Number of chunks to retrieve (set to 0 to disable RAG)
+- **Search Query** - Override the default query (uses last user message by default)
+- **Filters** - Filter chunks by metadata, tags, or other attributes
+
+### LLM Configuration
+
+- **Model** - Choose from various OpenAI-compatible models
+- **Temperature** - Control randomness (0.0-2.0)
+- **System Prompt** - Customize the assistant's behavior
+- **Frequency/Presence Penalty** - Reduce repetition (-2.0 to 2.0)
+- **Stop Tokens** - Custom stopping sequences (max 4)
+
+### Context Options
+
+- **Highlight Options** - Control how chunks are highlighted in responses
+- **Score Threshold** - Filter low-quality chunks
+- **Sort Options** - Rerank chunks by different criteria
+- **RAG Context** - Override how chunks are placed in the context window
+
+## Advanced Features
+
+### Agentic Search
+
+Enable `use_agentic_search` to let the LLM use tool calling for more sophisticated retrieval strategies.
+
+```json
+{
+  "use_agentic_search": true,
+  "topic_id": "...",
+  "new_message_content": "What are the advanced features?"
+}
+```
+
+### Group Search
+
+Use `use_group_search` to search within chunk groups instead of individual chunks.
+
+```json
+{
+  "use_group_search": true,
+  "topic_id": "...",
+  "new_message_content": "Tell me about your product categories"
+}
+```
+
+### Multimodal Input
+
+- **Image URLs** - Attach images to messages for vision-enabled models
+- **Audio Input** - Transcribe audio using Whisper before processing
+
+## Response Format
+
+RAG responses include both chunks and generated content:
+
+```
+[{"chunk_id":"...","content":"..."}]||This is the AI-generated response based on the retrieved chunks.
+```
+
+When retrieving messages via the API, parse this format to:
+- Display citations/sources from the chunks array
+- Show the generated message after the `||` delimiter
+
+## Next Steps
+
+<CardGroup cols={3}>
+  <Card title="Topics" icon="folder" href="/rag/topics">
+    Create and manage conversation topics
+  </Card>
+  <Card title="Messages" icon="message" href="/rag/messages">
+    Send messages and handle RAG completions
+  </Card>
+  <Card title="Streaming" icon="stream" href="/rag/streaming">
+    Process real-time streaming responses
+  </Card>
+</CardGroup>

@@ -1,0 +1,311 @@
+---
+title: 'Docker Compose Deployment'
+description: 'Deploy Trieve locally using Docker Compose for development or small production environments'
+---
+
+## Overview
+
+Docker Compose provides the quickest way to get Trieve running on a single machine. This method is ideal for:
+
+- Local development and testing
+- Small production deployments
+- Proof-of-concept evaluations
+
+<Warning>
+For production deployments at scale, consider using [Kubernetes](/self-hosting/kubernetes) instead.
+</Warning>
+
+## Prerequisites
+
+- Docker Engine 20.10 or higher
+- Docker Compose v2.0 or higher
+- 16 GB RAM minimum (32 GB recommended)
+- 50 GB free disk space
+
+## Quick Start
+
+<Steps>
+<Step title="Clone the repository">
+
+```bash
+git clone https://github.com/devflowinc/trieve.git
+cd trieve
+```
+
+</Step>
+
+<Step title="Configure environment variables">
+
+Copy the example environment file and update with your settings:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and configure required variables (see [Configuration](/self-hosting/configuration)).
+
+</Step>
+
+<Step title="Start the services">
+
+```bash
+docker compose up -d
+```
+
+This will start all Trieve services in the background.
+
+</Step>
+
+<Step title="Verify deployment">
+
+Check that all services are running:
+
+```bash
+docker compose ps
+```
+
+The API will be available at `http://localhost:8090`
+
+</Step>
+</Steps>
+
+## Service Architecture
+
+The Docker Compose deployment includes the following services:
+
+### Data Stores
+
+```yaml docker-compose.yml
+db:                    # PostgreSQL database (port 5432)
+redis:                 # Redis cache (port 6379)
+qdrant-database:       # Qdrant vector database (port 6333)
+clickhouse-db:         # ClickHouse analytics (port 8123)
+s3:                    # MinIO object storage (port 9000)
+```
+
+### Authentication
+
+```yaml docker-compose.yml
+keycloak:              # Keycloak OIDC provider (port 8080)
+keycloak-db:           # Keycloak PostgreSQL database
+```
+
+### Core Services
+
+```yaml docker-compose.yml
+server:                # Main API server (port 8090)
+dashboard:             # Admin dashboard (port 5173)
+search:                # Search UI (port 5174)
+chat:                  # Chat UI (port 5175)
+tika:                  # Document parser (port 9998)
+```
+
+### Workers
+
+```yaml docker-compose.yml
+ingestion-worker:      # Processes chunk ingestion
+file-worker:           # Handles file uploads
+csv-jsonl-worker:      # Processes CSV/JSONL files
+delete-worker:         # Handles deletion tasks
+```
+
+## Accessing Services
+
+Once deployed, access the following services:
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| API Server | http://localhost:8090 | Main REST API |
+| Dashboard | http://localhost:5173 | Admin interface |
+| Search UI | http://localhost:5174 | Search interface |
+| Chat UI | http://localhost:5175 | Chat interface |
+| Keycloak | http://localhost:8080 | Identity provider |
+| MinIO Console | http://localhost:42625 | Object storage console |
+| ClickHouse | http://localhost:8123 | Analytics database |
+
+## Health Checks
+
+Verify service health:
+
+```bash
+# Check API health
+curl http://localhost:8090/api/health
+
+# Check Qdrant
+curl http://localhost:6333/health
+
+# View service logs
+docker compose logs -f server
+```
+
+## Data Persistence
+
+The following Docker volumes persist data:
+
+```yaml
+volumes:
+  pgdata:              # PostgreSQL data
+  qdrant_data:         # Qdrant vectors
+  redis-data:          # Redis cache
+  s3-data:             # MinIO objects
+  clickhouse-data:     # ClickHouse analytics
+  keycloak-data:       # Keycloak config
+  pg-keycloak-data:    # Keycloak database
+```
+
+## Common Operations
+
+### View Logs
+
+```bash
+# All services
+docker compose logs -f
+
+# Specific service
+docker compose logs -f server
+
+# Last 100 lines
+docker compose logs --tail=100 server
+```
+
+### Restart Services
+
+```bash
+# Restart all services
+docker compose restart
+
+# Restart specific service
+docker compose restart server
+```
+
+### Stop Services
+
+```bash
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (WARNING: deletes all data)
+docker compose down -v
+```
+
+### Update Services
+
+```bash
+# Pull latest images
+docker compose pull
+
+# Restart with new images
+docker compose up -d
+```
+
+## Network Configuration
+
+All services run on the `app-network` bridge network. Most services use `network_mode: "host"` for simplified networking:
+
+```yaml docker-compose.yml
+server:
+  network_mode: "host"
+  # Uses host network for direct localhost access
+```
+
+## Resource Management
+
+### Limit Resource Usage
+
+Add resource limits to services in `docker-compose.yml`:
+
+```yaml
+server:
+  deploy:
+    resources:
+      limits:
+        cpus: '2'
+        memory: 4G
+      reservations:
+        cpus: '1'
+        memory: 2G
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Services fail to start">
+    Check if required ports are available:
+    ```bash
+    # Check port usage
+    sudo lsof -i :8090
+    sudo lsof -i :5432
+    ```
+    
+    Ensure sufficient resources:
+    ```bash
+    # Check Docker resources
+    docker stats
+    ```
+  </Accordion>
+
+  <Accordion title="Connection refused errors">
+    Verify services are healthy:
+    ```bash
+    docker compose ps
+    docker compose logs server
+    ```
+    
+    Check environment variables in `.env` file.
+  </Accordion>
+
+  <Accordion title="Out of memory errors">
+    Increase Docker memory limit or reduce concurrent workers:
+    - Edit `.env` to reduce `REDIS_CONNECTIONS`
+    - Restart services: `docker compose restart`
+  </Accordion>
+
+  <Accordion title="Qdrant collection errors">
+    Enable automatic collection creation:
+    ```bash
+    # In .env file
+    CREATE_QDRANT_COLLECTIONS=true
+    ```
+    
+    Restart services: `docker compose restart`
+  </Accordion>
+</AccordionGroup>
+
+## Production Considerations
+
+<Warning>
+Before using Docker Compose in production:
+
+- Use strong passwords for all services
+- Enable HTTPS/TLS encryption
+- Set up backup procedures for volumes
+- Configure external monitoring
+- Use a production-grade S3 service instead of MinIO
+- Review and harden Keycloak configuration
+</Warning>
+
+### Security Hardening
+
+1. **Change default credentials** in `.env`:
+   - `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`
+   - `REDIS_PASSWORD`
+   - `QDRANT_API_KEY`
+   - `ADMIN_API_KEY`
+
+2. **Enable secure cookies**:
+   ```bash
+   COOKIE_SECURE=true
+   ```
+
+3. **Configure Keycloak for production**:
+   ```bash
+   KC_PROXY=edge
+   KC_HOSTNAME=your-domain.com
+   ```
+
+## Next Steps
+
+- Review [Configuration options](/self-hosting/configuration)
+- Set up [Kubernetes deployment](/self-hosting/kubernetes) for production scale
+- Configure [embedding models](/self-hosting/configuration#embedding-servers)
+- Enable [analytics tracking](/analytics/overview)

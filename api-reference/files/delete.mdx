@@ -1,0 +1,56 @@
+---
+title: Delete File
+description: Delete a file from S3 attached to the server based on its id
+---
+
+<RequestExample>
+
+```bash cURL
+curl -X DELETE "https://api.trieve.ai/api/file/{file_id}?delete_chunks=true" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "TR-Dataset: <dataset-id>"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "<your-api-key>",
+  datasetId: "<dataset-id>"
+});
+
+await trieve.deleteFile({
+  fileId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  deleteChunks: true
+});
+
+console.log("File deleted successfully");
+```
+
+</RequestExample>
+
+## Delete File
+
+<ParamField path="file_id" type="string (uuid)" required>
+  The id of the file to delete.
+</ParamField>
+
+<ParamField query="delete_chunks" type="boolean" required>
+  Delete the chunks within the group. If true, all chunks associated with this file will be permanently deleted. If false, chunks will only be disassociated from the file but will remain in the dataset.
+</ParamField>
+
+## Response
+
+<ResponseField name="status" type="number">
+  Returns 204 No Content on successful deletion.
+</ResponseField>
+
+<Note>
+  This will delete the file from S3 and disassociate chunks from the file. Chunks will only be deleted if you specify `delete_chunks` to be true.
+  
+  Auth'ed user or api key must have an admin or owner role for the specified dataset's organization.
+</Note>
+
+<Warning>
+  Deleting a file with `delete_chunks=true` is a permanent action and cannot be undone. Make sure you want to delete both the file and its associated chunks before proceeding.
+</Warning>

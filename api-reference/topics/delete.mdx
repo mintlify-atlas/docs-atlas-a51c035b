@@ -1,0 +1,75 @@
+---
+title: 'Delete Topic'
+api: 'DELETE /api/topic/{topic_id}'
+description: 'Delete an existing chat topic'
+---
+
+Delete an existing chat topic. When a topic is deleted, all associated chat messages are also deleted.
+
+## Request
+
+<ParamField path="topic_id" type="string" required>
+  The id of the topic you want to delete.
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+## Response
+
+Returns a 204 No Content response on success.
+
+<RequestExample>
+
+```bash cURL
+curl -X DELETE "https://api.trieve.ai/api/topic/e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID"
+```
+
+```typescript TypeScript
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID",
+});
+
+await trieve.deleteTopic({
+  topic_id: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+});
+
+console.log("Topic deleted successfully");
+```
+
+```python Python
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    dataset_id="YOUR_DATASET_ID"
+)
+
+trieve.delete_topic(
+    topic_id="e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+)
+
+print("Topic deleted successfully")
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```text 204
+No Content
+```
+
+```json 400
+{
+  "message": "Service error relating to topic deletion"
+}
+```
+
+</ResponseExample>

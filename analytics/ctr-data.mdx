@@ -1,0 +1,359 @@
+---
+title: "CTR Data"
+description: "Track click-through rates to optimize search result ranking and recommendations"
+---
+
+## Overview
+
+Click-Through Rate (CTR) data is crucial for understanding which search results and recommendations users find most relevant. Trieve uses CTR data to fine-tune re-ranking algorithms and improve result quality over time.
+
+## What is CTR?
+
+CTR (Click-Through Rate) measures the percentage of searches or recommendations that result in a user clicking on a result. It's calculated as:
+
+```
+CTR = (Searches with Clicks / Total Searches) × 100
+```
+
+For example, if 75 out of 100 searches result in at least one click, the CTR is 75%.
+
+## Sending CTR Events
+
+### Using the Events Endpoint
+
+The recommended way to send CTR data is through the general events endpoint:
+
+```bash
+curl -X PUT 'https://api.trieve.ai/api/analytics/events' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "event_type": "click",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "clicked_chunk_id": "123e4567-e89b-12d3-a456-426614174000",
+  "position": 2,
+  "metadata": {
+    "user_id": "user_123",
+    "session_id": "session_456",
+    "action": "view_details"
+  }
+}'
+```
+
+### Event Parameters
+
+<ParamField path="event_type" type="string" required>
+  The type of event, use `"click"` for CTR tracking
+</ParamField>
+
+<ParamField path="request_id" type="uuid" required>
+  The ID of the search or recommendation request that was clicked
+</ParamField>
+
+<ParamField path="clicked_chunk_id" type="uuid">
+  The ID of the chunk that was clicked. Either this or `clicked_chunk_tracking_id` is required
+</ParamField>
+
+<ParamField path="clicked_chunk_tracking_id" type="string">
+  The tracking ID of the chunk that was clicked
+</ParamField>
+
+<ParamField path="position" type="integer" required>
+  The position of the clicked result (1-based index)
+</ParamField>
+
+<ParamField path="metadata" type="object">
+  Additional metadata to track with the event (user_id, session_id, etc.)
+</ParamField>
+
+## Retrieving CTR Analytics
+
+### Search CTR Metrics
+
+Get overall CTR metrics for search queries:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/ctr' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchCTRMetrics": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z",
+        "lt": "2024-12-31T23:59:59Z"
+      }
+    }
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "searches_with_clicks": 7543,
+  "percent_searches_with_clicks": 75.43,
+  "percent_searches_without_clicks": 24.57,
+  "avg_position_of_click": 2.3
+}
+```
+
+### Searches With Clicks
+
+Retrieve specific searches that resulted in clicks:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/ctr' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchesWithClicks": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1
+  }
+}'
+```
+
+### Searches Without Clicks
+
+Identify searches that didn't result in clicks to understand gaps in relevance:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/ctr' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "SearchesWithoutClicks": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "page": 1
+  }
+}'
+```
+
+## CTR Over Time
+
+Track CTR trends with time-series data:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/search' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "CTRMetricsOverTime": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "total_ctr": 75.43,
+  "points": [
+    {
+      "time": "2024-01-01T00:00:00Z",
+      "value": 73.2
+    },
+    {
+      "time": "2024-01-02T00:00:00Z",
+      "value": 76.1
+    }
+  ]
+}
+```
+
+## Recommendation CTR
+
+Track CTR for recommendation requests:
+
+### Recommendation CTR Metrics
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/events/ctr' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "RecommendationCTRMetrics": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    }
+  }
+}'
+```
+
+**Response:**
+
+```json
+{
+  "recommendations_with_clicks": 1234,
+  "percent_recommendations_with_clicks": 68.5,
+  "percent_recommendations_without_clicks": 31.5,
+  "avg_position_of_click": 1.8
+}
+```
+
+### Recommendations CTR Rate Over Time
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/analytics/recommendations' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "RecommendationsCTRRate": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "week"
+  }
+}'
+```
+
+## Filtering CTR Data
+
+All CTR endpoints support filtering by:
+
+<ParamField path="date_range" type="object">
+  Filter events by time range
+  - `gt` - Greater than timestamp
+  - `gte` - Greater than or equal to timestamp
+  - `lt` - Less than timestamp
+  - `lte` - Less than or equal to timestamp
+</ParamField>
+
+<ParamField path="search_method" type="string">
+  Filter by search method: `"fulltext"`, `"semantic"`, `"hybrid"`
+</ParamField>
+
+<ParamField path="search_type" type="string">
+  Filter by search type: `"search"`, `"autocomplete"`, `"search_over_groups"`
+</ParamField>
+
+## Using CTR Data for Optimization
+
+### Identify Low-Performing Queries
+
+Queries without clicks indicate potential relevance issues:
+
+1. Review searches without clicks to find common patterns
+2. Check if results exist for these queries
+3. Adjust search parameters or add relevant content
+4. Monitor CTR improvement over time
+
+### Optimize Result Ranking
+
+CTR data reveals which positions users click most:
+
+1. Track `avg_position_of_click` to understand user behavior
+2. If clicks are concentrated at lower positions, ranking may need adjustment
+3. Use click data to inform re-ranking algorithms
+4. A/B test different ranking strategies
+
+### Monitor Engagement Trends
+
+Track CTR over time to measure improvements:
+
+1. Set baseline CTR metrics
+2. Implement search improvements
+3. Compare CTR before and after changes
+4. Identify seasonal or usage patterns
+
+<Note>
+  CTR data is used by Trieve's re-ranking algorithms to automatically improve search relevance. Higher click positions for certain results signal their importance for specific queries.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Track Clicks Immediately">
+    Send click events as soon as a user interacts with a result to ensure accurate tracking
+  </Accordion>
+  <Accordion title="Include Position Data">
+    Always include the position parameter to understand which result positions drive the most engagement
+  </Accordion>
+  <Accordion title="Use Metadata Wisely">
+    Add user_id, session_id, and other context in metadata to enable deeper analysis
+  </Accordion>
+  <Accordion title="Monitor Both Clicks and Non-Clicks">
+    Searches without clicks are just as important as those with clicks for understanding relevance gaps
+  </Accordion>
+  <Accordion title="Set CTR Targets">
+    Establish CTR benchmarks based on your use case and monitor progress toward goals
+  </Accordion>
+</AccordionGroup>
+
+## Example Implementation
+
+```javascript
+// Track click event when user clicks a search result
+function trackSearchClick(searchId, chunkId, position) {
+  fetch('https://api.trieve.ai/api/analytics/events', {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer YOUR_API_KEY',
+      'TR-Dataset': 'YOUR_DATASET_ID',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      event_type: 'click',
+      request_id: searchId,
+      clicked_chunk_id: chunkId,
+      position: position,
+      metadata: {
+        user_id: getCurrentUserId(),
+        session_id: getSessionId(),
+        timestamp: new Date().toISOString()
+      }
+    })
+  });
+}
+
+// Call when rendering search results
+searchResults.forEach((result, index) => {
+  result.addEventListener('click', () => {
+    trackSearchClick(searchRequestId, result.chunk_id, index + 1);
+  });
+});
+```
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Query Analytics" href="/analytics/queries" icon="magnifying-glass">
+    Analyze search queries and patterns
+  </Card>
+  <Card title="Metrics" href="/analytics/metrics" icon="chart-bar">
+    Explore all available analytics metrics
+  </Card>
+  <Card title="Events API" href="/api-reference/analytics/send-event-data" icon="calendar-check">
+    Full API reference for sending events
+  </Card>
+  <Card title="Search Optimization" href="/search/optimization" icon="sparkles">
+    Learn how to optimize search results
+  </Card>
+</CardGroup>

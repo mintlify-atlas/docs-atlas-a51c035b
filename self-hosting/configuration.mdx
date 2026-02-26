@@ -1,0 +1,683 @@
+---
+title: 'Configuration'
+description: 'Environment variables and configuration options for self-hosted Trieve deployments'
+---
+
+## Overview
+
+Trieve is configured through environment variables defined in `.env` for Docker Compose or `values.yaml` for Kubernetes deployments.
+
+## Core Configuration
+
+### Server Settings
+
+<ParamField path="BASE_SERVER_URL" type="string" required>
+  Base URL where the Trieve API server is accessible
+  
+  ```bash
+  BASE_SERVER_URL="http://localhost:8090"
+  ```
+</ParamField>
+
+<ParamField path="ADMIN_API_KEY" type="string" required>
+  API key for administrative operations
+  
+  ```bash
+  ADMIN_API_KEY="your-secure-admin-key"
+  ```
+</ParamField>
+
+<ParamField path="SECRET_KEY" type="string" required>
+  Secret key for signing tokens (must be 64+ characters)
+  
+  ```bash
+  SECRET_KEY="01234012340123401234012340123401234012340123401234012340123401234012340123401234"
+  ```
+</ParamField>
+
+<ParamField path="SALT" type="string" required>
+  Salt for password hashing
+  
+  ```bash
+  SALT="goodsaltisveryyummy"
+  ```
+</ParamField>
+
+<ParamField path="COOKIE_SECURE" type="boolean" default="false">
+  Enable secure cookies (set to `true` for HTTPS)
+  
+  ```bash
+  COOKIE_SECURE="true"
+  ```
+</ParamField>
+
+<ParamField path="UNLIMITED" type="boolean" default="false">
+  Disable usage limits for all operations
+  
+  ```bash
+  UNLIMITED="true"
+  ```
+</ParamField>
+
+## Database Configuration
+
+### PostgreSQL
+
+<ParamField path="DATABASE_URL" type="string" required>
+  PostgreSQL connection string
+  
+  ```bash
+  DATABASE_URL="postgres://postgres:password@localhost:5432/trieve"
+  ```
+</ParamField>
+
+### Redis
+
+<ParamField path="REDIS_URL" type="string" required>
+  Redis connection URL with password
+  
+  ```bash
+  REDIS_URL="redis://:yourpassword@localhost:6379"
+  ```
+</ParamField>
+
+<ParamField path="REDIS_PASSWORD" type="string" required>
+  Password for Redis authentication
+  
+  ```bash
+  REDIS_PASSWORD="thisredispasswordisverysecureandcomplex"
+  ```
+</ParamField>
+
+<ParamField path="REDIS_CONNECTIONS" type="number" default="2">
+  Number of Redis connections to maintain
+  
+  ```bash
+  REDIS_CONNECTIONS=3
+  ```
+</ParamField>
+
+### Qdrant (Vector Database)
+
+<ParamField path="QDRANT_URL" type="string" required>
+  Qdrant server URL
+  
+  ```bash
+  QDRANT_URL="http://localhost:6334"
+  ```
+</ParamField>
+
+<ParamField path="QDRANT_API_KEY" type="string" required>
+  API key for Qdrant authentication
+  
+  ```bash
+  QDRANT_API_KEY="qdrant_pass"
+  ```
+</ParamField>
+
+<ParamField path="CREATE_QDRANT_COLLECTIONS" type="boolean" default="false">
+  Automatically create Qdrant collections on startup
+  
+  ```bash
+  CREATE_QDRANT_COLLECTIONS="true"
+  ```
+</ParamField>
+
+<ParamField path="QUANTIZE_VECTORS" type="boolean" default="false">
+  Enable binary quantization for vectors
+  
+  ```bash
+  QUANTIZE_VECTORS="false"
+  ```
+</ParamField>
+
+<ParamField path="REPLICATION_FACTOR" type="number" default="2">
+  Number of replicas for Qdrant collections
+  
+  ```bash
+  REPLICATION_FACTOR=2
+  ```
+</ParamField>
+
+<ParamField path="VECTOR_SIZES" type="string" default="384,512,768,1024,1536,3072">
+  Supported vector embedding dimensions
+  
+  ```bash
+  VECTOR_SIZES="384,512,768,1024,1536,3072"
+  ```
+</ParamField>
+
+### ClickHouse (Analytics)
+
+<ParamField path="CLICKHOUSE_URL" type="string">
+  ClickHouse server URL
+  
+  ```bash
+  CLICKHOUSE_URL="http://localhost:8123"
+  ```
+</ParamField>
+
+<ParamField path="CLICKHOUSE_DB" type="string" default="default">
+  ClickHouse database name
+  
+  ```bash
+  CLICKHOUSE_DB="default"
+  ```
+</ParamField>
+
+<ParamField path="CLICKHOUSE_USER" type="string">
+  ClickHouse username
+  
+  ```bash
+  CLICKHOUSE_USER="clickhouse"
+  ```
+</ParamField>
+
+<ParamField path="CLICKHOUSE_PASSWORD" type="string">
+  ClickHouse password
+  
+  ```bash
+  CLICKHOUSE_PASSWORD="password"
+  ```
+</ParamField>
+
+## Storage Configuration
+
+### S3/MinIO
+
+<ParamField path="S3_ENDPOINT" type="string" required>
+  S3-compatible storage endpoint
+  
+  ```bash
+  S3_ENDPOINT="http://localhost:9000"
+  ```
+</ParamField>
+
+<ParamField path="S3_ACCESS_KEY" type="string" required>
+  S3 access key ID
+  
+  ```bash
+  S3_ACCESS_KEY="ZaaZZaaZZaaZZaaZZaaZ"
+  ```
+</ParamField>
+
+<ParamField path="S3_SECRET_KEY" type="string" required>
+  S3 secret access key
+  
+  ```bash
+  S3_SECRET_KEY="ssssssssssssssssssssTTTTTTTTTTTTTTTTTTTT"
+  ```
+</ParamField>
+
+<ParamField path="S3_BUCKET" type="string" required>
+  S3 bucket name for file storage
+  
+  ```bash
+  S3_BUCKET="trieve"
+  ```
+</ParamField>
+
+<ParamField path="AWS_REGION" type="string">
+  AWS region (required for AWS S3)
+  
+  ```bash
+  AWS_REGION="us-west-2"
+  ```
+</ParamField>
+
+### MinIO (Docker Compose only)
+
+<ParamField path="MINIO_ROOT_USER" type="string">
+  MinIO root username
+  
+  ```bash
+  MINIO_ROOT_USER="rootuser"
+  ```
+</ParamField>
+
+<ParamField path="MINIO_ROOT_PASSWORD" type="string">
+  MinIO root password
+  
+  ```bash
+  MINIO_ROOT_PASSWORD="rootpassword"
+  ```
+</ParamField>
+
+## Authentication (OIDC)
+
+### Keycloak
+
+<ParamField path="OIDC_ISSUER_URL" type="string" required>
+  OIDC provider issuer URL
+  
+  ```bash
+  OIDC_ISSUER_URL="http://localhost:8080/realms/trieve"
+  ```
+</ParamField>
+
+<ParamField path="OIDC_CLIENT_ID" type="string" required>
+  OIDC client ID
+  
+  ```bash
+  OIDC_CLIENT_ID="vault"
+  ```
+</ParamField>
+
+<ParamField path="OIDC_CLIENT_SECRET" type="string" required>
+  OIDC client secret
+  
+  ```bash
+  OIDC_CLIENT_SECRET="YllmLDTy67MbsUBrUAWvQ7z9aMq0QcKx"
+  ```
+</ParamField>
+
+<ParamField path="OIDC_AUTH_REDIRECT_URL" type="string" required>
+  OIDC authorization redirect URL
+  
+  ```bash
+  OIDC_AUTH_REDIRECT_URL="http://localhost:8080/realms/trieve/protocol/openid-connect/auth"
+  ```
+</ParamField>
+
+<ParamField path="KC_HOSTNAME" type="string">
+  Keycloak hostname for production
+  
+  ```bash
+  KC_HOSTNAME="auth.yourdomain.com"
+  ```
+</ParamField>
+
+<ParamField path="KC_PROXY" type="string" default="edge">
+  Keycloak proxy mode (`edge` or `none`)
+  
+  ```bash
+  KC_PROXY="edge"
+  ```
+</ParamField>
+
+## AI/ML Configuration
+
+### Embedding Servers
+
+<ParamField path="EMBEDDING_SERVER_ORIGIN" type="string">
+  URL for Jina embeddings server
+  
+  ```bash
+  EMBEDDING_SERVER_ORIGIN="http://localhost:6000"
+  ```
+</ParamField>
+
+<ParamField path="EMBEDDING_SERVER_ORIGIN_BGEM3" type="string">
+  URL for BGE-M3 embeddings server
+  
+  ```bash
+  EMBEDDING_SERVER_ORIGIN_BGEM3="http://localhost:7000"
+  ```
+</ParamField>
+
+<ParamField path="SPARSE_SERVER_QUERY_ORIGIN" type="string">
+  URL for SPLADE query embeddings
+  
+  ```bash
+  SPARSE_SERVER_QUERY_ORIGIN="http://localhost:5000"
+  ```
+</ParamField>
+
+<ParamField path="SPARSE_SERVER_DOC_ORIGIN" type="string">
+  URL for SPLADE document embeddings
+  
+  ```bash
+  SPARSE_SERVER_DOC_ORIGIN="http://localhost:4000"
+  ```
+</ParamField>
+
+<ParamField path="RERANKER_SERVER_ORIGIN" type="string">
+  URL for reranker server
+  
+  ```bash
+  RERANKER_SERVER_ORIGIN="http://localhost:8000"
+  ```
+</ParamField>
+
+<ParamField path="GPU_SERVER_ORIGIN" type="string">
+  URL for GPU-accelerated services
+  
+  ```bash
+  GPU_SERVER_ORIGIN="http://localhost:7070"
+  ```
+</ParamField>
+
+### OpenAI
+
+<ParamField path="OPENAI_API_KEY" type="string">
+  OpenAI API key for LLM operations
+  
+  ```bash
+  OPENAI_API_KEY="sk-************************************************************"
+  ```
+</ParamField>
+
+<ParamField path="OPENAI_BASE_URL" type="string" default="https://api.openai.com/v1">
+  OpenAI API base URL (can point to compatible services)
+  
+  ```bash
+  OPENAI_BASE_URL="https://api.openai.com/v1"
+  ```
+</ParamField>
+
+### Other LLM Providers
+
+<ParamField path="LLM_API_KEY" type="string">
+  API key for OpenRouter or other LLM providers
+  
+  ```bash
+  LLM_API_KEY="your-llm-api-key"
+  ```
+</ParamField>
+
+<ParamField path="JINA_CODE_API_KEY" type="string">
+  Jina AI API key for code embeddings
+  
+  ```bash
+  JINA_CODE_API_KEY="jina_****"
+  ```
+</ParamField>
+
+## Email Configuration
+
+<ParamField path="SMTP_RELAY" type="string">
+  SMTP server hostname
+  
+  ```bash
+  SMTP_RELAY="smtp.fastmail.com"
+  ```
+</ParamField>
+
+<ParamField path="SMTP_USERNAME" type="string">
+  SMTP username
+  
+  ```bash
+  SMTP_USERNAME="noreply@trieve.ai"
+  ```
+</ParamField>
+
+<ParamField path="SMTP_PASSWORD" type="string">
+  SMTP password
+  
+  ```bash
+  SMTP_PASSWORD="your-smtp-password"
+  ```
+</ParamField>
+
+<ParamField path="SMTP_EMAIL_ADDRESS" type="string">
+  From email address
+  
+  ```bash
+  SMTP_EMAIL_ADDRESS="noreply@trieve.ai"
+  ```
+</ParamField>
+
+## Frontend Configuration
+
+<ParamField path="VITE_API_HOST" type="string" required>
+  API endpoint URL for frontend apps
+  
+  ```bash
+  VITE_API_HOST="http://localhost:8090/api"
+  ```
+</ParamField>
+
+<ParamField path="VITE_DASHBOARD_URL" type="string">
+  Dashboard URL
+  
+  ```bash
+  VITE_DASHBOARD_URL="http://localhost:5173"
+  ```
+</ParamField>
+
+<ParamField path="VITE_SEARCH_UI_URL" type="string">
+  Search UI URL
+  
+  ```bash
+  VITE_SEARCH_UI_URL="http://localhost:5174"
+  ```
+</ParamField>
+
+<ParamField path="VITE_CHAT_UI_URL" type="string">
+  Chat UI URL
+  
+  ```bash
+  VITE_CHAT_UI_URL="http://localhost:5175"
+  ```
+</ParamField>
+
+<ParamField path="VITE_ANALYTICS_UI_URL" type="string">
+  Analytics UI URL
+  
+  ```bash
+  VITE_ANALYTICS_UI_URL="http://localhost:5176"
+  ```
+</ParamField>
+
+<ParamField path="VITE_BM25_ACTIVE" type="boolean" default="true">
+  Enable BM25 full-text search in UI
+  
+  ```bash
+  VITE_BM25_ACTIVE=true
+  ```
+</ParamField>
+
+## Additional Services
+
+<ParamField path="TIKA_URL" type="string">
+  Apache Tika document parser URL
+  
+  ```bash
+  TIKA_URL="http://localhost:9998"
+  ```
+</ParamField>
+
+<ParamField path="STRIPE_SECRET" type="string">
+  Stripe API secret key (if using billing)
+  
+  ```bash
+  STRIPE_SECRET="sk_test_****"
+  ```
+</ParamField>
+
+<ParamField path="STRIPE_WEBHOOK_SECRET" type="string">
+  Stripe webhook secret
+  
+  ```bash
+  STRIPE_WEBHOOK_SECRET="whsec_****"
+  ```
+</ParamField>
+
+## Logging
+
+<ParamField path="RUST_LOG" type="string" default="INFO">
+  Logging level (TRACE, DEBUG, INFO, WARN, ERROR)
+  
+  ```bash
+  RUST_LOG="INFO"
+  ```
+</ParamField>
+
+## Feature Flags
+
+<ParamField path="BM25_ACTIVE" type="boolean" default="true">
+  Enable BM25 full-text search
+  
+  ```bash
+  BM25_ACTIVE="true"
+  ```
+</ParamField>
+
+## Kubernetes-Specific Configuration
+
+### Values.yaml Structure
+
+For Kubernetes deployments, configuration is in `values.yaml`:
+
+```yaml values.yaml
+config:
+  trieve:
+    baseServerUrl: http://api.yourdomain.com
+    adminApiKey: "your-admin-key"
+    salt: "your-salt"
+    secretKey: "your-secret-key"
+    unlimited: true
+    cookieSecure: true
+    bm25Active: true
+  
+  redis:
+    connections: 3
+  
+  qdrant:
+    quantizeVectors: false
+    replicationFactor: 2
+    shardCount: 12
+    vectorSizes:
+      - 768
+      - 1536
+      - 1024
+      - 3072
+  
+  openai:
+    apiKey: "sk-****"
+    baseUrl: https://api.openai.com/v1
+  
+  s3:
+    endpoint: "https://s3.amazonaws.com"
+    accessKey: "your-access-key"
+    secretKey: "your-secret-key"
+    bucket: "trieve-production"
+```
+
+## Environment-Specific Examples
+
+### Development
+
+```bash .env
+BASE_SERVER_URL="http://localhost:8090"
+COOKIE_SECURE="false"
+UNLIMITED="true"
+RUST_LOG="DEBUG"
+CREATE_QDRANT_COLLECTIONS="true"
+```
+
+### Staging
+
+```bash .env
+BASE_SERVER_URL="https://staging-api.yourdomain.com"
+COOKIE_SECURE="true"
+UNLIMITED="true"
+RUST_LOG="INFO"
+QUANTIZE_VECTORS="false"
+```
+
+### Production
+
+```bash .env
+BASE_SERVER_URL="https://api.yourdomain.com"
+COOKIE_SECURE="true"
+UNLIMITED="false"
+RUST_LOG="WARN"
+QUANTIZE_VECTORS="true"
+REPLICATION_FACTOR="3"
+```
+
+## Security Best Practices
+
+<Warning>
+Before deploying to production:
+
+1. **Change all default passwords** - Update passwords for PostgreSQL, Redis, Qdrant, MinIO, and Keycloak
+2. **Use strong secrets** - Generate cryptographically secure values for `SECRET_KEY` and `SALT`
+3. **Enable HTTPS** - Set `COOKIE_SECURE="true"` and configure TLS certificates
+4. **Restrict network access** - Use firewalls and network policies to limit service exposure
+5. **Rotate credentials** - Regularly update API keys and passwords
+6. **Use secrets management** - Store sensitive values in Kubernetes Secrets or external vaults
+7. **Enable audit logging** - Set `RUST_LOG` appropriately to track operations
+</Warning>
+
+## Configuration Validation
+
+To verify your configuration:
+
+<Steps>
+<Step title="Check environment variables">
+
+```bash
+# Docker Compose
+docker compose config
+
+# Kubernetes
+kubectl get configmap trieve-server-config -n trieve -o yaml
+```
+
+</Step>
+
+<Step title="Test database connections">
+
+```bash
+# PostgreSQL
+psql $DATABASE_URL -c "SELECT 1;"
+
+# Redis
+redis-cli -u $REDIS_URL ping
+
+# Qdrant
+curl $QDRANT_URL/health
+```
+
+</Step>
+
+<Step title="Verify API health">
+
+```bash
+curl http://localhost:8090/api/health
+```
+
+</Step>
+</Steps>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Missing environment variables">
+    Check logs for errors:
+    ```bash
+    # Docker Compose
+    docker compose logs server | grep -i "environment"
+    
+    # Kubernetes
+    kubectl logs deployment/server -n trieve | grep -i "environment"
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection failures">
+    Verify connection strings:
+    ```bash
+    # Test PostgreSQL
+    pg_isready -d $DATABASE_URL
+    
+    # Test Redis
+    redis-cli -u $REDIS_URL ping
+    ```
+  </Accordion>
+
+  <Accordion title="OIDC authentication errors">
+    Verify Keycloak configuration:
+    - Check `OIDC_ISSUER_URL` is accessible
+    - Verify `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` match Keycloak
+    - Ensure redirect URLs are configured in Keycloak
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+- Review [Docker Compose deployment](/self-hosting/docker-compose)
+- Set up [Kubernetes deployment](/self-hosting/kubernetes)
+- Configure [embedding models](/self-hosting/kubernetes#embedding-services)
+- Enable [monitoring and analytics](/analytics/overview)

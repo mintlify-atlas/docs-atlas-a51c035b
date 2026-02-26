@@ -1,0 +1,238 @@
+---
+title: "Regenerate Message"
+description: "Regenerate the assistant response to the last user message"
+---
+
+## PATCH /api/message
+
+Regenerate the assistant's response to the last user message in a topic. This deletes the last assistant message and generates a new one with potentially different parameters or search settings.
+
+<Note>
+  The DELETE method for this endpoint is deprecated. Use PATCH instead.
+</Note>
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset ID or tracking_id to use for the request
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  API key with admin role for the dataset's organization
+</ParamField>
+
+### Body
+
+<ParamField body="topic_id" type="string" required>
+  The ID of the topic to regenerate the last message for
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  The ID of the user making the request. Used to track user interactions with RAG results.
+</ParamField>
+
+#### Search Configuration
+
+<ParamField body="search_query" type="string">
+  The search query to use for RAG. If not specified, defaults to the last user message or HyDE if enabled.
+</ParamField>
+
+<ParamField body="search_type" type="string" default="hybrid">
+  Search method: `semantic`, `fulltext`, `hybrid`, or `bm25`
+</ParamField>
+
+<ParamField body="page_size" type="integer">
+  Number of chunks to fetch during RAG. If 0, no search will be performed.
+</ParamField>
+
+<ParamField body="score_threshold" type="number" default={0.0}>
+  Filter out chunks with a score below this threshold
+</ParamField>
+
+<ParamField body="use_group_search" type="boolean" default={false}>
+  If true, search using the `search_over_groups` API
+</ParamField>
+
+<ParamField body="use_agentic_search" type="boolean" default={false}>
+  If true, use LLM tool calling for agentic search
+</ParamField>
+
+<ParamField body="filters" type="object">
+  JSON object to filter chunks by metadata
+</ParamField>
+
+<ParamField body="sort_options" type="object">
+  Options to rerank chunks in the result set
+</ParamField>
+
+<ParamField body="highlight_options" type="object">
+  Options to highlight chunks in the result set
+</ParamField>
+
+<ParamField body="typo_options" type="object">
+  Options to handle typos in the search query
+</ParamField>
+
+<ParamField body="use_quote_negated_terms" type="boolean" default={false}>
+  Parse quoted and `-` prefixed words as required and negated terms
+</ParamField>
+
+<ParamField body="remove_stop_words" type="boolean" default={false}>
+  Remove stop words from the query
+</ParamField>
+
+#### LLM Configuration
+
+<ParamField body="llm_options" type="object">
+  LLM options for the completion. If not specified, defaults to dataset's LLM options.
+  
+  - `temperature` (number): Sampling temperature between 0 and 2. Default is 0.5.
+  - `frequency_penalty` (number): Penalty between -2.0 and 2.0. Default is 0.7.
+  - `presence_penalty` (number): Penalty between -2.0 and 2.0. Default is 0.7.
+  - `stop_tokens` (array): Up to 4 sequences where the API will stop generating tokens
+  - `max_tokens` (integer): Maximum tokens to generate
+  - `system_prompt` (string): Override the dataset's system prompt
+  - `stream_response` (boolean): Whether to stream the response. Default is true.
+  - `completion_first` (boolean): Stream completion before chunks. Default is false.
+</ParamField>
+
+<ParamField body="model" type="string">
+  Model name to use for completion. If not specified, uses the dataset's default model.
+</ParamField>
+
+<ParamField body="context_options" type="object">
+  Options for context window configuration
+</ParamField>
+
+<ParamField body="concat_user_messages_query" type="boolean" default={false}>
+  If true, concatenate all user messages as the search query
+</ParamField>
+
+<ParamField body="number_of_messages_to_include" type="integer" default={10}>
+  Number of messages to include in the context window
+</ParamField>
+
+<ParamField body="rag_context" type="string">
+  Override how chunks are placed into the context window
+</ParamField>
+
+<ParamField body="no_result_message" type="string">
+  Message to return when no chunks are found above the score threshold
+</ParamField>
+
+<ParamField body="only_include_docs_used" type="boolean">
+  If true, only include the docs that were used in the completion
+</ParamField>
+
+<ParamField body="currency" type="string" default="USD">
+  Currency to use for the completion
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Metadata to associate with the event created from this request
+</ParamField>
+
+### Response
+
+<ResponseField name="response" type="string | stream">
+  **Streaming Response (default):** An HTTP stream where chunks are sent first if RAG is enabled, followed by `||`, then the regenerated assistant message.
+  
+  **Non-streaming Response:** A JSON string containing the LLM's generated inference.
+</ResponseField>
+
+<ResponseField name="TR-QueryID" type="string">
+  Query ID header used for tracking analytics
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X PATCH "https://api.trieve.ai/api/message" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: ********-****-****-****-************" \
+  -d '{
+    "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+    "search_type": "semantic",
+    "llm_options": {
+      "temperature": 0.9,
+      "stream_response": true
+    }
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "********-****-****-****-************"
+});
+
+const regenerated = await trieve.regenerateMessage({
+  topic_id: "550e8400-e29b-41d4-a716-446655440000",
+  search_type: "semantic",
+  llm_options: {
+    temperature: 0.9,
+    stream_response: true
+  }
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="tr-********************************",
+  dataset_id="********-****-****-****-************"
+)
+
+regenerated = trieve.regenerate_message(
+  topic_id="550e8400-e29b-41d4-a716-446655440000",
+  search_type="semantic",
+  llm_options={
+    "temperature": 0.9,
+    "stream_response": True
+  }
+)
+```
+
+### Use Cases
+
+**Adjust Response Quality**
+```json
+{
+  "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+  "llm_options": {
+    "temperature": 0.9
+  }
+}
+```
+
+**Change Search Strategy**
+```json
+{
+  "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+  "search_type": "semantic",
+  "page_size": 15,
+  "score_threshold": 0.8
+}
+```
+
+**Try Different Model**
+```json
+{
+  "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+  "model": "gpt-4",
+  "llm_options": {
+    "max_tokens": 500
+  }
+}
+```
+
+### Notes
+
+- This endpoint requires at least 2 messages in the topic (one user message and one assistant message)
+- The last assistant message will be deleted and replaced with a new generation
+- All message history before the last assistant message is preserved
+- The same user message will be used, but you can modify search and LLM parameters

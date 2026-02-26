@@ -1,0 +1,151 @@
+---
+title: "Get Dataset"
+description: "Retrieve a dataset by its ID"
+---
+
+## GET /api/dataset/{dataset_id}
+
+Retrieve a dataset by its ID. The authenticated user or API key must have an admin or owner role for the specified dataset's organization.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key with admin permissions
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="dataset_id" type="string" required>
+  The id of the dataset you want to retrieve.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  Unique identifier of the dataset
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the dataset
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  Unique identifier of the organization that owns the dataset
+</ResponseField>
+
+<ResponseField name="tracking_id" type="string">
+  Tracking ID of the dataset
+</ResponseField>
+
+<ResponseField name="server_configuration" type="object">
+  Configuration of the dataset for RAG, embeddings, BM25, etc.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp of the creation of the dataset
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp of the last update of the dataset
+</ResponseField>
+
+<ResponseField name="deleted" type="number">
+  Flag to indicate if the dataset has been deleted
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://api.trieve.ai/api/dataset/e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "TR-Dataset: e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "Authorization: YOUR_API_KEY"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+const dataset = await trieve.getDataset({
+  datasetId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+console.log("Dataset:", dataset);
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    dataset_id="e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+)
+
+dataset = trieve.get_dataset(
+    dataset_id="e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+)
+
+print("Dataset:", dataset)
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "id": "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  "name": "My Dataset",
+  "organization_id": "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+  "tracking_id": "my-dataset-001",
+  "server_configuration": {
+    "EMBEDDING_MODEL_NAME": "text-embedding-3-small",
+    "EMBEDDING_SIZE": 1536,
+    "LLM_DEFAULT_MODEL": "gpt-3.5-turbo-1106",
+    "BM25_ENABLED": true,
+    "BM25_B": 0.75,
+    "BM25_K": 0.75,
+    "BM25_AVG_LEN": 256.0,
+    "FULLTEXT_ENABLED": true,
+    "SEMANTIC_ENABLED": true,
+    "DISTANCE_METRIC": "cosine",
+    "SYSTEM_PROMPT": "You are a helpful assistant",
+    "RAG_PROMPT": "Use the following retrieved documents to respond briefly and accurately:",
+    "N_RETRIEVALS_TO_INCLUDE": 8,
+    "TEMPERATURE": 0.5,
+    "FREQUENCY_PENALTY": 0.0,
+    "PRESENCE_PENALTY": 0.0,
+    "MAX_LIMIT": 10000
+  },
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z",
+  "deleted": 0
+}
+```
+
+### Alternative: Get Dataset by Tracking ID
+
+You can also retrieve a dataset using its tracking ID:
+
+**Endpoint:** `GET /api/dataset/tracking_id/{tracking_id}`
+
+**Headers:**
+- `TR-Organization`: The organization id to use for the request
+- `Authorization`: Your API key with admin permissions
+
+**Example:**
+
+```bash cURL
+curl -X GET "https://api.trieve.ai/api/dataset/tracking_id/my-dataset-001" \
+  -H "TR-Organization: YOUR_ORGANIZATION_ID" \
+  -H "Authorization: YOUR_API_KEY"
+```

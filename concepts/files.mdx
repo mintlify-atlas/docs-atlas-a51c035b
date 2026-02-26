@@ -1,0 +1,445 @@
+---
+title: Files
+description: Upload and process documents, PDFs, and other files into searchable chunks in Trieve
+---
+
+## What is a File?
+
+A file in Trieve represents an uploaded document that is automatically processed and chunked for search and RAG. When you upload a file:
+
+1. The file is stored in S3
+2. Text is extracted (via Apache Tika, OCR, or vision LLM)
+3. Content is split into chunks
+4. A group is created to organize the chunks
+5. Chunks are indexed for search
+
+Files provide a high-level abstraction over the chunking process, making it easy to ingest documents without manual text extraction.
+
+## Why Files Matter
+
+Files enable document-centric workflows:
+
+1. **Automatic Processing**: No need to manually extract and chunk text
+2. **Preserved Structure**: File-to-group-to-chunks relationship is maintained
+3. **Source Tracking**: Link chunks back to their source files
+4. **Batch Management**: Update or delete entire documents at once
+5. **Rich Formats**: Support for PDFs, Word docs, HTML, and more
+
+## Supported File Types
+
+Trieve supports text extraction from:
+
+- **Documents**: PDF, DOCX, TXT, RTF
+- **Web**: HTML, XML
+- **Spreadsheets**: XLSX, CSV
+- **Presentations**: PPTX
+- **Images**: OCR from JPG, PNG (when configured)
+
+## File Properties
+
+From the source code at `server/src/handlers/file_handler.rs:468-517`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `file_name` | string | Name with extension (e.g., "document.pdf") |
+| `base64_file` | string | Base64-encoded file content |
+| `tag_set` | string[] | Tags passed to created chunks |
+| `metadata` | object | Metadata passed to created chunks |
+| `link` | string | URL/reference passed to chunks |
+| `time_stamp` | datetime | Timestamp passed to chunks |
+| `create_chunks` | boolean | Whether to auto-create chunks (default: true) |
+| `group_tracking_id` | string | Custom tracking ID for the group |
+
+<Info>
+All metadata, tags, links, and timestamps you set on the file are inherited by every chunk created from that file.
+</Info>
+
+## Uploading Files
+
+### Basic Upload
+
+```typescript
+const file = await trieve.uploadFile({
+  file_name: "product-guide.pdf",
+  base64_file: base64EncodedContent,
+  tag_set: ["documentation", "product-guide"],
+  metadata: {
+    category: "guides",
+    version: "2.0"
+  }
+});
+```
+
+The file is queued for processing. Chunks will be created asynchronously.
+
+### Chunking Configuration
+
+Control how files are split into chunks (from `server/src/handlers/file_handler.rs:500-506`):
+
+```typescript
+const file = await trieve.uploadFile({
+  file_name: "document.pdf",
+  base64_file: base64Content,
+  split_delimiters: ["\n\n", ".", "!", "?"], // Custom delimiters
+  target_splits_per_chunk: 30, // Sentences per chunk
+  rebalance_chunks: true // Evenly distribute remainder
+});
+```
+
+**Chunking Process:**
+1. Text is extracted from the file
+2. Text is split by delimiters (default: sentence boundaries)
+3. Splits are grouped into chunks of ~`target_splits_per_chunk`
+4. If `rebalance_chunks: true`, remainder splits are distributed evenly
+
+<Note>
+With `target_splits_per_chunk: 20` and 66 splits:
+- `rebalance: false` → 3 chunks (20, 20, 26)
+- `rebalance: true` → 3 chunks (22, 22, 22)
+</Note>
+
+### Advanced: PDF to Markdown with Vision LLM
+
+Use a vision LLM (GPT-4V) to convert PDFs to markdown (from `server/src/handlers/file_handler.rs:520-528`):
+
+```typescript
+const file = await trieve.uploadFile({
+  file_name: "complex-document.pdf",
+  base64_file: base64Content,
+  pdf2md_options: {
+    use_pdf2md_ocr: true,
+    system_prompt: "Convert this to markdown, preserving tables and code blocks.",
+    split_headings: true // Create one chunk per heading
+  }
+});
+```
+
+<Warning>
+Vision LLM processing is slower and more expensive than standard text extraction. Use for documents with complex layouts, tables, or images.
+</Warning>
+
+### Advanced: Chunkr Integration
+
+For production-grade document processing, use [Chunkr](https://chunkr.ai) (from `server/src/handlers/file_handler.rs:444-465`):
+
+```typescript
+const file = await trieve.uploadFile({
+  file_name: "document.pdf",
+  base64_file: base64Content,
+  chunkr_create_task_req_payload: {
+    ocr_strategy: "All",
+    segmentation_strategy: "LayoutAnalysis",
+    chunk_processing: {
+      target_length: 512,
+      tokenizer: "Cl100kBase"
+    }
+  }
+});
+```
+
+Chunkr provides:
+- Advanced OCR
+- Layout analysis (tables, formulas, images)
+- Configurable chunking strategies
+- Higher quality for complex documents
+
+## Manual Chunking
+
+Disable automatic chunking to create chunks manually:
+
+```typescript
+// Upload file without creating chunks
+const file = await trieve.uploadFile({
+  file_name: "document.pdf",
+  base64_file: base64Content,
+  create_chunks: false
+});
+
+// Manually create chunks and associate with file
+const group = /* get group created for file */;
+await trieve.createChunk({
+  chunk_html: "Custom chunk content",
+  group_ids: [group.id]
+});
+```
+
+Useful for:
+- Custom chunking logic
+- Processing binary formats
+- Metadata-only file records
+
+## File-Group-Chunk Relationship
+
+When a file is uploaded:
+
+```
+File → Group → Chunks
+ ↓       ↓        ↓
+ S3    Postgres  Qdrant
+```
+
+1. **File record** stored in `files` table with metadata
+2. **Group created** and linked to file in `groups_from_files` table
+3. **Chunks created** from file content, all belonging to the group
+
+This relationship enables:
+- Finding all chunks from a file (via group)
+- Deleting a file and all its chunks
+- Tracking file source for each chunk
+
+## Retrieving Files
+
+### Get File with Signed URL
+
+Retrieve file metadata and a temporary download URL:
+
+```typescript
+const file = await trieve.getFile({
+  file_id: "file-uuid",
+  ttl: 3600, // URL valid for 1 hour
+  content_type: "application/pdf" // Optional override
+});
+
+console.log(file.s3_url); // Signed URL for download
+```
+
+The signed URL allows direct download from S3 without auth.
+
+### List Files in Dataset
+
+Scroll through all files with cursor-based pagination:
+
+```typescript
+let cursor = null;
+do {
+  const result = await trieve.getFiles({
+    cursor,
+    page_size: 50
+  });
+  
+  console.log(result.file_with_chunk_groups);
+  cursor = result.next_cursor;
+} while (cursor);
+```
+
+Each file includes its associated groups for easy navigation.
+
+## Deleting Files
+
+Delete a file and optionally its chunks:
+
+```typescript
+// Delete file and chunks
+await trieve.deleteFile({
+  file_id: "file-uuid",
+  delete_chunks: true
+});
+
+// Delete file but keep chunks
+await trieve.deleteFile({
+  file_id: "file-uuid",
+  delete_chunks: false
+});
+```
+
+When `delete_chunks: true`:
+1. File record is deleted
+2. Associated group is deleted
+3. All chunks in the group are deleted from Postgres and Qdrant
+4. File is removed from S3
+
+## CSV and JSONL Files
+
+For large CSV/JSONL files, use presigned URLs to avoid payload size limits:
+
+```typescript
+// Get presigned upload URL
+const response = await trieve.createPresignedCsvUrl({
+  file_name: "data.csv",
+  tag_set: ["imported"],
+  mappings: {
+    chunk_html: ["description"],
+    tag_set: ["category", "type"],
+    metadata: ["*"] // Map all other columns to metadata
+  }
+});
+
+// Upload directly to S3
+await fetch(response.presigned_put_url, {
+  method: "PUT",
+  body: csvFileContent
+});
+
+// Chunks created automatically from each row
+```
+
+### CSV/JSONL Mappings
+
+Map CSV columns or JSON fields to chunk properties:
+
+```typescript
+mappings: {
+  chunk_html: ["title", "description"], // Concatenated
+  link: ["url"],
+  tag_set: ["category", "tags"], // Multiple sources
+  metadata: ["*"], // All unmapped fields
+  tracking_id: ["id"],
+  num_value: ["price"]
+}
+```
+
+This creates one chunk per CSV row or JSONL object.
+
+## File Processing Queue
+
+Files are processed asynchronously:
+
+```typescript
+// Upload returns immediately
+const file = await trieve.uploadFile({...});
+
+// Check queue length
+const queues = await trieve.getDatasetQueueLengths();
+console.log(`Files in queue: ${queues.file_queue_length}`);
+```
+
+Processing steps:
+1. File uploaded to S3
+2. File record created in Postgres
+3. Message queued for worker
+4. Worker extracts text
+5. Worker creates chunks
+6. Chunks indexed in Qdrant
+
+Time depends on file size and processing method.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use base64url encoding">
+    Encode files with base64url (URL-safe) encoding:
+    ```typescript
+    const base64url = btoa(fileContent)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '');
+    ```
+    Standard base64 is also supported as a fallback.
+  </Accordion>
+  
+  <Accordion title="Set meaningful metadata">
+    File metadata is inherited by all chunks:
+    ```typescript
+    metadata: {
+      author: "Jane Doe",
+      created_at: "2024-02-15",
+      department: "engineering",
+      doc_type: "api_reference"
+    }
+    ```
+    Use this for filtering and organization.
+  </Accordion>
+  
+  <Accordion title="Tune chunking for your content">
+    - **Prose**: `target_splits_per_chunk: 20-30` (paragraphs)
+    - **Code**: `target_splits_per_chunk: 10-15` (smaller for precision)
+    - **Technical docs**: `split_delimiters: ["\n\n", "#"]` (sections)
+  </Accordion>
+  
+  <Accordion title="Use group_tracking_id for integration">
+    Set custom group tracking IDs to link with external systems:
+    ```typescript
+    group_tracking_id: `doc-${externalDocId}`
+    ```
+  </Accordion>
+  
+  <Accordion title="For large files, use presigned URLs">
+    Files over 10MB should use the CSV/JSONL presigned URL flow to avoid HTTP payload limits.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Document Upload with Metadata
+
+```typescript
+const file = await trieve.uploadFile({
+  file_name: doc.filename,
+  base64_file: await fileToBase64(doc.file),
+  metadata: {
+    document_id: doc.id,
+    author: doc.author,
+    category: doc.category,
+    access_level: doc.accessLevel
+  },
+  tag_set: [doc.category, doc.department],
+  time_stamp: doc.createdAt,
+  group_tracking_id: `doc-${doc.id}`
+});
+```
+
+### Replace Document
+
+Update a document by deleting and re-uploading:
+
+```typescript
+// Find and delete old file
+const oldFile = await trieve.getFileByGroupTrackingId(`doc-${docId}`);
+await trieve.deleteFile({
+  file_id: oldFile.id,
+  delete_chunks: true
+});
+
+// Upload new version
+await trieve.uploadFile({
+  file_name: newDocument.filename,
+  base64_file: await fileToBase64(newDocument),
+  group_tracking_id: `doc-${docId}`,
+  metadata: { version: "2.0" }
+});
+```
+
+### Bulk Import from CSV
+
+```typescript
+// For product catalog, blog posts, etc.
+const response = await trieve.createPresignedCsvUrl({
+  file_name: "products.csv",
+  mappings: {
+    chunk_html: ["name", "description"],
+    link: ["url"],
+    tag_set: ["category", "brand"],
+    num_value: ["price"],
+    tracking_id: ["sku"],
+    metadata: ["*"]
+  }
+});
+
+await uploadToS3(response.presigned_put_url, csvContent);
+```
+
+### Archive Old Documents
+
+Keep file records but remove from search:
+
+```typescript
+// Delete chunks but keep file metadata
+await trieve.deleteFile({
+  file_id: fileId,
+  delete_chunks: true
+});
+
+// File record remains for audit trail
+const file = await trieve.getFile({ file_id: fileId });
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Upload Your First File" icon="file-arrow-up" href="/api-reference/files/upload">
+    Try the file upload API
+  </Card>
+  <Card title="Understand Groups" icon="layer-group" href="/concepts/groups">
+    Learn about file-group relationships
+  </Card>
+</CardGroup>

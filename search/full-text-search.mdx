@@ -1,0 +1,486 @@
+---
+title: Full-Text Search
+description: SPLADE-based sparse vector search for exact term matching and keyword search
+---
+
+Full-text search in Trieve uses SPLADE (SParse Lexical AnD Expansion) embeddings to perform keyword-based search with learned term importance. Unlike traditional keyword search, SPLADE understands term importance and can match on related terms, not just exact matches.
+
+## How SPLADE Works
+
+<Steps>
+  <Step title="Query Processing">
+    Your query is converted into a sparse vector where each dimension represents a token from the vocabulary, with values indicating importance.
+  </Step>
+  
+  <Step title="Token Expansion">
+    SPLADE expands queries with related terms (e.g., "dog" might activate "puppy", "canine") through learned associations.
+  </Step>
+  
+  <Step title="Sparse Vector Search">
+    Qdrant performs efficient sparse vector search using inverted indices, similar to traditional full-text search but with importance weighting.
+  </Step>
+  
+  <Step title="Relevance Scoring">
+    Results are scored based on the overlap of important tokens between query and chunks.
+  </Step>
+</Steps>
+
+<Info>
+  **SPLADE vs Traditional Full-Text**: Traditional full-text search treats all matching terms equally. SPLADE learns which terms are most important for relevance and can match on semantically related terms.
+</Info>
+
+## Basic Usage
+
+Set `search_type` to `"fulltext"` (or `"full_text"`):
+
+<CodeGroup>
+```javascript JavaScript
+const response = await fetch('https://api.trieve.ai/api/chunk/search', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    search_type: 'fulltext',
+    query: 'machine learning python tutorial',
+    page_size: 10
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.trieve.ai/api/chunk/search',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'search_type': 'fulltext',
+        'query': 'machine learning python tutorial',
+        'page_size': 10
+    }
+)
+
+data = response.json()
+```
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/chunk/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -d '{
+    "search_type": "fulltext",
+    "query": "machine learning python tutorial",
+    "page_size": 10
+  }'
+```
+</CodeGroup>
+
+## Full-Text Boosting
+
+Boost the importance of specific tokens in your search:
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": "AirBNB hosting",
+  "scoring_options": {
+    "fulltext_boost": {
+      "phrase": "AirBNB",
+      "boost_factor": 5.0  // Multiply token importance by 5x
+    }
+  }
+}
+```
+
+<Info>
+  **How it works**: Full-text boosting multiplies the importance values in the SPLADE sparse vector for all tokens in the boost phrase. This ensures the official AirBNB listing ranks higher than companies making software for AirBNB hosts.
+</Info>
+
+### Practical Use Cases
+
+<Tabs>
+  <Tab title="Brand Name Prioritization">
+    ```javascript
+    {
+      "query": "apple laptop reviews",
+      "scoring_options": {
+        "fulltext_boost": {
+          "phrase": "Apple",
+          "boost_factor": 3.0
+        }
+      }
+    }
+    ```
+    Ensures "Apple" brand results rank higher than recipes with apples.
+  </Tab>
+  
+  <Tab title="Title Emphasis">
+    ```javascript
+    {
+      "query": "climate change report",
+      "scoring_options": {
+        "fulltext_boost": {
+          "phrase": "climate change",
+          "boost_factor": 2.0
+        }
+      }
+    }
+    ```
+    Prioritizes documents where "climate change" appears in titles.
+  </Tab>
+  
+  <Tab title="Technical Terms">
+    ```javascript
+    {
+      "query": "database indexing performance",
+      "scoring_options": {
+        "fulltext_boost": {
+          "phrase": "indexing",
+          "boost_factor": 4.0
+        }
+      }
+    }
+    ```
+    Emphasizes technical precision for specialized searches.
+  </Tab>
+</Tabs>
+
+## Quote and Negation Terms
+
+Use special syntax for required and excluded terms:
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": '"machine learning" -supervised',
+  "use_quote_negated_terms": true
+}
+```
+
+<Note>
+  **Syntax**:
+  - Quoted terms (e.g., `"exact phrase"`) are **required** - all results must contain them
+  - Minus-prefixed terms (e.g., `-unwanted`) are **negated** - results containing them are excluded
+</Note>
+
+### Examples
+
+| Query | Behavior |
+|-------|----------|
+| `"neural network" training` | Must contain "neural network", prefer "training" |
+| `python -java -ruby` | Include Python, exclude Java and Ruby |
+| `"machine learning" -deep -neural` | Must have ML, exclude deep/neural |
+
+## Stop Word Removal
+
+Remove common words for cleaner searches:
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": "what are the best practices for API design",
+  "remove_stop_words": true  // Removes: what, are, the, for
+}
+```
+
+<Warning>
+  Stop words are defined in `server/src/stop-words.txt`. Queries that are **entirely stop words** are preserved to avoid empty searches.
+</Warning>
+
+## Autocomplete Search
+
+Special autocomplete endpoint optimized for type-ahead:
+
+```javascript
+fetch('https://api.trieve.ai/api/chunk/autocomplete', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    search_type: 'fulltext',
+    query: 'mach',  // Partial query
+    extend_results: true,  // Include both autocomplete + full search
+    page_size: 5
+  })
+});
+```
+
+<Info>
+  **Autocomplete behavior**: Results must contain the query string as a substring in their content. Set `extend_results: true` to also include standard search results.
+</Info>
+
+## Highlighting
+
+Full-text search includes match highlighting:
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": "quantum computing",
+  "highlight_options": {
+    "highlight_results": true,
+    "highlight_delimiters": ["?", ".", "!"],
+    "highlight_max_length": 150,
+    "highlight_max_num": 3,
+    "highlight_strategy": "v1",
+    "highlight_threshold": 0.5,
+    "pre_tag": "<mark>",
+    "post_tag": "</mark>"
+  }
+}
+```
+
+### Highlight Options Explained
+
+- `highlight_delimiters`: Split content at these characters for highlighting
+- `highlight_max_length`: Maximum characters per highlight snippet
+- `highlight_max_num`: Maximum number of highlighted sections
+- `highlight_strategy`: "v1" (exact match) or "v2" (fuzzy match)
+- `highlight_threshold`: Minimum similarity score (0-1) for v2 strategy
+- `pre_tag`/`post_tag`: HTML tags wrapping matched text
+
+<Tabs>
+  <Tab title="V1 Strategy - Exact">
+    ```json
+    {
+      "highlight_strategy": "v1"
+    }
+    ```
+    Only highlights exact query term matches. Faster but less comprehensive.
+  </Tab>
+  
+  <Tab title="V2 Strategy - Fuzzy">
+    ```json
+    {
+      "highlight_strategy": "v2",
+      "highlight_threshold": 0.5
+    }
+    ```
+    Highlights similar terms based on embedding similarity. Catches paraphrases and variations.
+  </Tab>
+</Tabs>
+
+## Re-ranking Options
+
+Full-text search can be re-ranked with other methods:
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": "database optimization",
+  "sort_options": {
+    "sort_by": {
+      "rerank_type": "semantic",
+      "prefetch_amount": 100  // Fetch 100 fulltext, re-rank by semantic
+    }
+  }
+}
+```
+
+### Available Re-rank Types
+
+- `semantic` - Re-rank by dense vector similarity
+- `fulltext` - Re-rank by SPLADE (useful when primary search is semantic)
+- `bm25` - Re-rank by BM25 keyword scoring
+- `cross_encoder` - Re-rank with cross-encoder model (most accurate, slower)
+
+## BM25 vs SPLADE
+
+Trieve offers both SPLADE and traditional BM25:
+
+<Tabs>
+  <Tab title="SPLADE (fulltext)">
+    **Search Type**: `"fulltext"`
+    
+    **Advantages**:
+    - Learned term importance
+    - Query expansion with related terms
+    - Better for natural language queries
+    - Contextual understanding
+    
+    **Best for**:
+    - General purpose search
+    - When users type full questions
+    - Content with varied vocabulary
+  </Tab>
+  
+  <Tab title="BM25 (bm25)">
+    **Search Type**: `"bm25"`
+    
+    **Advantages**:
+    - Faster execution
+    - Exact keyword matching
+    - Predictable behavior
+    - Term frequency weighting
+    
+    **Best for**:
+    - Technical documentation
+    - Code search
+    - Exact term matching
+    - Legacy system compatibility
+  </Tab>
+</Tabs>
+
+## Performance Optimization
+
+<AccordionGroup>
+  <Accordion title="Reduce Response Size">
+    ```javascript
+    {
+      "search_type": "fulltext",
+      "query": "search query",
+      "slim_chunks": true,      // Exclude content and chunk_html
+      "content_only": true      // Return only chunk_html, no metadata
+    }
+    ```
+    Reduces payload by 10-50ms depending on chunk sizes.
+  </Accordion>
+  
+  <Accordion title="Optimize Filters">
+    - Use tag-based filters instead of metadata filters when possible (HNSW indexed)
+    - Put most selective filters first
+    - Avoid complex nested conditions
+  </Accordion>
+  
+  <Accordion title="Pagination Strategy">
+    ```javascript
+    {
+      "page": 1,
+      "page_size": 20,
+      "get_total_pages": false  // Skip total count calculation
+    }
+    ```
+    Saves 50-200ms by not computing total pages.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Product Search
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": "wireless headphones",
+  "scoring_options": {
+    "fulltext_boost": {
+      "phrase": "Sony Bose",  // Boost brand names
+      "boost_factor": 2.5
+    }
+  },
+  "filters": {
+    "must": [
+      {
+        "field": "num_value",
+        "range": { "gte": 50, "lte": 200 }  // Price range
+      }
+    ]
+  }
+}
+```
+
+### Technical Documentation
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": '"error handling" exception -deprecated',
+  "use_quote_negated_terms": true,
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_any": ["tutorial", "guide"]
+      }
+    ]
+  }
+}
+```
+
+### News/Content Search
+
+```javascript
+{
+  "search_type": "fulltext",
+  "query": "climate summit 2024",
+  "filters": {
+    "must": [
+      {
+        "field": "time_stamp",
+        "date_range": {
+          "gte": "2024-01-01T00:00:00",
+          "lte": "2024-12-31T23:59:59"
+        }
+      }
+    ]
+  },
+  "sort_options": {
+    "sort_by": {
+      "field": "time_stamp",
+      "direction": "desc"
+    }
+  }
+}
+```
+
+## Response Format
+
+```json
+{
+  "id": "search-uuid",
+  "chunks": [
+    {
+      "chunk": {
+        "id": "chunk-uuid",
+        "content": "<mark>Machine learning</mark> is a subset of AI...",
+        "link": "https://example.com/ml-guide",
+        "metadata": {...}
+      },
+      "score": 15.4  // SPLADE score (not normalized 0-1)
+    }
+  ],
+  "total_pages": 5
+}
+```
+
+<Note>
+  **Score Interpretation**: SPLADE scores are not normalized to 0-1 like cosine similarity. Higher scores indicate better matches, but absolute values vary based on query complexity.
+</Note>
+
+## Best Practices
+
+1. **Use full-text boosting** for domain-specific terms and brand names
+2. **Enable quote/negation** for power users who understand the syntax
+3. **Combine with filters** for faceted search experiences
+4. **Consider hybrid search** for best overall results
+5. **Enable highlighting** for better UX showing why results matched
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hybrid Search" icon="layer-group" href="/search/hybrid-search">
+    Combine full-text with semantic search
+  </Card>
+  <Card title="Filters" icon="filter" href="/search/filters">
+    Advanced filtering techniques
+  </Card>
+  <Card title="Semantic Search" icon="brain" href="/search/semantic-search">
+    Understand vector-based search
+  </Card>
+  <Card title="Search Overview" icon="book" href="/search/overview">
+    Back to search overview
+  </Card>
+</CardGroup>

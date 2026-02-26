@@ -1,0 +1,149 @@
+---
+title: "Get Organization"
+description: "Fetch the details of an organization by its ID"
+---
+
+## Endpoint
+
+<ParamField path="method" type="string" required>
+  GET
+</ParamField>
+
+<ParamField path="url" type="string" required>
+  /api/organization/{organization_id}
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="organization_id" type="string" required>
+  The id of the organization you want to fetch.
+</ParamField>
+
+## Headers
+
+<ParamField header="TR-Organization" type="string" required>
+  The organization id to use for the request
+</ParamField>
+
+## Response
+
+<ResponseField name="organization" type="object">
+  The organization object containing all details
+  
+  <Expandable title="organization properties">
+    <ResponseField name="id" type="string">
+      Unique identifier of the organization
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Name of the organization
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Timestamp of the creation of the organization
+    </ResponseField>
+    
+    <ResponseField name="updated_at" type="string">
+      Timestamp of the last update of the organization
+    </ResponseField>
+    
+    <ResponseField name="deleted" type="integer">
+      Flag to indicate if the organization has been deleted
+    </ResponseField>
+    
+    <ResponseField name="registerable" type="boolean">
+      Flag to indicate whether or not new users may join the organization
+    </ResponseField>
+    
+    <ResponseField name="partner_configuration" type="object">
+      Configuration of the organization for the Trieve partner program
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="plan" type="object" optional>
+  The subscription plan details for the organization
+  
+  <Expandable title="plan properties">
+    <ResponseField name="id" type="string">
+      Unique identifier of the plan
+    </ResponseField>
+    
+    <ResponseField name="chunk_count" type="integer">
+      Number of chunks included in the plan
+    </ResponseField>
+    
+    <ResponseField name="file_storage" type="integer">
+      File storage limit in bytes
+    </ResponseField>
+    
+    <ResponseField name="dataset_count" type="integer">
+      Number of datasets allowed in the plan
+    </ResponseField>
+    
+    <ResponseField name="message_count" type="integer">
+      Number of messages included in the plan
+    </ResponseField>
+    
+    <ResponseField name="amount" type="integer">
+      The cost of the plan in cents
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="subscription" type="object" optional>
+  The subscription details for the organization
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://api.trieve.ai/api/organization/e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "TR-Organization: e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "<your-api-key>",
+  organizationId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+const organization = await trieve.getOrganization({
+  organizationId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+console.log("Organization details:", organization);
+```
+
+```python Python
+import requests
+
+organization_id = "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+
+response = requests.get(
+    f"https://api.trieve.ai/api/organization/{organization_id}",
+    headers={
+        "Authorization": "Bearer <your-api-key>",
+        "TR-Organization": organization_id
+    }
+)
+
+organization = response.json()
+print("Organization details:", organization)
+```
+
+</CodeGroup>
+
+## Authentication
+
+Requires authentication with an API key that has at least `admin` role for the specified organization.
+
+## Error Responses
+
+- `400`: Service error relating to finding the organization by id
+- `404`: Organization not found

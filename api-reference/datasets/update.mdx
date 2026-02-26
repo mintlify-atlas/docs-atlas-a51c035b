@@ -1,0 +1,221 @@
+---
+title: "Update Dataset"
+description: "Update a dataset by ID or tracking ID"
+---
+
+## PUT /api/dataset
+
+Update a dataset by its ID or tracking ID. One of `dataset_id` or `tracking_id` must be provided. The authenticated user must be an owner of the organization to update a dataset.
+
+### Headers
+
+<ParamField header="TR-Organization" type="string" required>
+  The organization id to use for the request
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key with owner permissions
+</ParamField>
+
+### Request Body
+
+<ParamField body="dataset_id" type="string">
+  The id of the dataset you want to update. Either this or `tracking_id` must be provided.
+</ParamField>
+
+<ParamField body="tracking_id" type="string">
+  The tracking ID of the dataset you want to update. Either this or `dataset_id` must be provided.
+</ParamField>
+
+<ParamField body="dataset_name" type="string">
+  The new name of the dataset. Must be unique within the organization. If not provided, the name will not be updated.
+</ParamField>
+
+<ParamField body="new_tracking_id" type="string">
+  Optional new tracking ID for the dataset. Can be used to track the dataset in external systems. Must be unique within the organization. If not provided, the tracking ID will not be updated. Strongly recommended to not use a valid uuid value as that will not work with the TR-Dataset header.
+</ParamField>
+
+<ParamField body="server_configuration" type="object">
+  The configuration of the dataset. See the example request payload for the potential keys which can be set. It is possible to break your dataset's functionality by erroneously updating this field. We recommend updating through the settings panel for your dataset at dashboard.trieve.ai.
+
+  <Expandable title="Configuration Properties">
+    <ParamField body="EMBEDDING_MODEL_NAME" type="string">
+      The name of the embedding model to use
+    </ParamField>
+
+    <ParamField body="EMBEDDING_SIZE" type="number">
+      The size of the embedding vectors
+    </ParamField>
+
+    <ParamField body="LLM_DEFAULT_MODEL" type="string">
+      The default LLM model to use
+    </ParamField>
+
+    <ParamField body="BM25_ENABLED" type="boolean">
+      Whether BM25 search is enabled
+    </ParamField>
+
+    <ParamField body="FULLTEXT_ENABLED" type="boolean">
+      Whether full-text search is enabled
+    </ParamField>
+
+    <ParamField body="SEMANTIC_ENABLED" type="boolean">
+      Whether semantic search is enabled
+    </ParamField>
+
+    <ParamField body="SYSTEM_PROMPT" type="string">
+      The system prompt for LLM interactions
+    </ParamField>
+
+    <ParamField body="RAG_PROMPT" type="string">
+      The prompt template for RAG operations
+    </ParamField>
+
+    <ParamField body="TEMPERATURE" type="number">
+      Temperature setting for LLM responses (0.0-1.0)
+    </ParamField>
+
+    <ParamField body="LOCKED" type="boolean">
+      Whether the dataset is locked from modifications
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  Unique identifier of the dataset
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the dataset
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  Unique identifier of the organization that owns the dataset
+</ResponseField>
+
+<ResponseField name="tracking_id" type="string">
+  Tracking ID of the dataset
+</ResponseField>
+
+<ResponseField name="server_configuration" type="object">
+  Configuration of the dataset for RAG, embeddings, BM25, etc.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp of the creation of the dataset
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp of the last update of the dataset
+</ResponseField>
+
+<ResponseField name="deleted" type="number">
+  Flag to indicate if the dataset has been deleted
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL (Update by ID)
+curl -X PUT "https://api.trieve.ai/api/dataset" \
+  -H "TR-Organization: YOUR_ORGANIZATION_ID" \
+  -H "Authorization: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dataset_id": "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+    "dataset_name": "Updated Dataset Name",
+    "server_configuration": {
+      "SYSTEM_PROMPT": "You are an expert assistant",
+      "TEMPERATURE": 0.7
+    }
+  }'
+```
+
+```bash cURL (Update by Tracking ID)
+curl -X PUT "https://api.trieve.ai/api/dataset" \
+  -H "TR-Organization: YOUR_ORGANIZATION_ID" \
+  -H "Authorization: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tracking_id": "my-dataset-001",
+    "dataset_name": "Updated Dataset Name",
+    "new_tracking_id": "my-dataset-002"
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  organizationId: "YOUR_ORGANIZATION_ID"
+});
+
+const updatedDataset = await trieve.updateDataset({
+  dataset_id: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  dataset_name: "Updated Dataset Name",
+  server_configuration: {
+    SYSTEM_PROMPT: "You are an expert assistant",
+    TEMPERATURE: 0.7
+  }
+});
+
+console.log("Dataset updated:", updatedDataset);
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    organization_id="YOUR_ORGANIZATION_ID"
+)
+
+updated_dataset = trieve.update_dataset(
+    dataset_id="e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+    dataset_name="Updated Dataset Name",
+    server_configuration={
+        "SYSTEM_PROMPT": "You are an expert assistant",
+        "TEMPERATURE": 0.7
+    }
+)
+
+print("Dataset updated:", updated_dataset)
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "id": "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  "name": "Updated Dataset Name",
+  "organization_id": "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+  "tracking_id": "my-dataset-002",
+  "server_configuration": {
+    "EMBEDDING_MODEL_NAME": "text-embedding-3-small",
+    "EMBEDDING_SIZE": 1536,
+    "LLM_DEFAULT_MODEL": "gpt-3.5-turbo-1106",
+    "BM25_ENABLED": true,
+    "FULLTEXT_ENABLED": true,
+    "SEMANTIC_ENABLED": true,
+    "SYSTEM_PROMPT": "You are an expert assistant",
+    "TEMPERATURE": 0.7
+  },
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T14:25:00.000Z",
+  "deleted": 0
+}
+```
+
+### Important Notes
+
+- You must provide either `dataset_id` or `tracking_id` to identify the dataset to update
+- Only the fields you include in the request will be updated; other fields remain unchanged
+- When updating `server_configuration`, only the specified configuration keys will be updated
+- Changing the dataset name requires it to be unique within the organization
+- It's recommended to update dataset configuration through the dashboard at dashboard.trieve.ai to avoid breaking functionality

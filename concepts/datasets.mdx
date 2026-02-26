@@ -1,0 +1,246 @@
+---
+title: Datasets
+description: Understanding datasets in Trieve - the top-level container for organizing your search and RAG data
+---
+
+## What is a Dataset?
+
+A dataset is the primary organizational unit in Trieve. It acts as a container for all your chunks, groups, and files, providing isolation and configuration for your search and RAG applications. Each dataset has its own:
+
+- Embedding model configuration
+- Search settings (BM25, semantic, fulltext)
+- LLM configuration for RAG
+- Access control and API keys
+- Usage quotas and limits
+
+## Why Datasets Matter
+
+Datasets provide several critical capabilities:
+
+1. **Isolation**: Data in one dataset is completely separate from other datasets
+2. **Customization**: Each dataset can have unique embedding models, search algorithms, and LLM settings
+3. **Multi-tenancy**: Build applications that serve multiple customers, each with their own dataset
+4. **Resource Management**: Track usage and apply limits per dataset
+
+## Dataset Configuration
+
+Each dataset includes a `server_configuration` that controls its behavior:
+
+```json
+{
+  "EMBEDDING_BASE_URL": "https://api.openai.com/v1",
+  "EMBEDDING_MODEL_NAME": "text-embedding-3-small",
+  "EMBEDDING_SIZE": 1536,
+  "LLM_DEFAULT_MODEL": "gpt-3.5-turbo-1106",
+  "BM25_ENABLED": true,
+  "FULLTEXT_ENABLED": true,
+  "SEMANTIC_ENABLED": true,
+  "N_RETRIEVALS_TO_INCLUDE": 8,
+  "SYSTEM_PROMPT": "You are a helpful assistant"
+}
+```
+
+<Note>
+You can configure different embedding models for different datasets. For example, use `text-embedding-3-small` for one dataset and `text-embedding-3-large` for another that requires higher accuracy.
+</Note>
+
+## Key Dataset Properties
+
+From the source code at `server/src/handlers/dataset_handler.rs:103-110`:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `dataset_name` | string | Human-readable name for the dataset |
+| `tracking_id` | string (optional) | External system identifier (must be unique within organization) |
+| `server_configuration` | object | Complete configuration for embeddings, search, and LLM |
+| `organization_id` | uuid | The organization that owns this dataset |
+
+<Warning>
+The `tracking_id` must be unique within your organization. Avoid using valid UUIDs as tracking IDs as they won't work with the `TR-Dataset` header.
+</Warning>
+
+## Creating a Dataset
+
+Datasets must be created within an organization. Only users with owner permissions can create datasets:
+
+```typescript
+const dataset = await trieve.createDataset({
+  dataset_name: "Product Documentation",
+  tracking_id: "prod-docs-v1",
+  server_configuration: {
+    EMBEDDING_MODEL_NAME: "text-embedding-3-small",
+    EMBEDDING_SIZE: 1536,
+    BM25_ENABLED: true,
+    SEMANTIC_ENABLED: true
+  }
+});
+```
+
+## Dataset Limits
+
+Datasets are subject to organization plan limits (from `server/src/handlers/dataset_handler.rs:180-193`):
+
+- Maximum number of datasets per organization
+- Chunk count limits
+- File storage limits
+- API rate limits
+
+## Relationship to Other Concepts
+
+<CardGroup cols={2}>
+  <Card title="Chunks" icon="cube" href="/concepts/chunks">
+    Datasets contain chunks - the searchable units of content
+  </Card>
+  <Card title="Groups" icon="layer-group" href="/concepts/groups">
+    Organize chunks into groups within a dataset
+  </Card>
+  <Card title="Files" icon="file" href="/concepts/files">
+    Upload files that are chunked and stored in the dataset
+  </Card>
+  <Card title="Organizations" icon="building" href="/concepts/organizations">
+    Datasets belong to organizations for access control
+  </Card>
+</CardGroup>
+
+## Working with Multiple Datasets
+
+You can specify which dataset to use via the `TR-Dataset` header:
+
+```bash
+curl -X POST 'https://api.trieve.ai/api/chunk' \
+  -H 'Authorization: Bearer YOUR_API_KEY' \
+  -H 'TR-Dataset: YOUR_DATASET_ID' \
+  -H 'Content-Type: application/json' \
+  -d '{"chunk_html": "Your content here"}'
+```
+
+The header accepts either:
+- Dataset UUID: `550e8400-e29b-41d4-a716-446655440000`
+- Dataset tracking_id: `my-dataset-v1`
+
+## Dataset Operations
+
+### Cloning Datasets
+
+You can clone a dataset to duplicate its configuration and optionally its chunks (from `server/src/handlers/dataset_handler.rs:408-482`):
+
+```typescript
+const clonedDataset = await trieve.cloneDataset({
+  dataset_to_clone: "original-dataset-id",
+  dataset_name: "Cloned Dataset",
+  clone_chunks: true // Copy all chunks from original
+});
+```
+
+### Clearing Datasets
+
+Remove all chunks, files, and groups while retaining the dataset and analytics:
+
+```typescript
+await trieve.clearDataset(datasetId);
+```
+
+### Deleting Datasets
+
+Permanently delete a dataset and all its data. Only owners can delete datasets:
+
+```typescript
+await trieve.deleteDataset(datasetId);
+```
+
+## Dataset Tags
+
+Retrieve all tags used across chunks in a dataset:
+
+```typescript
+const tags = await trieve.getAllTags({
+  page: 1,
+  page_size: 20
+});
+
+// Returns:
+// {
+//   tags: [{tag: "documentation", count: 150}, ...],
+//   total: 42
+// }
+```
+
+This is useful for building filter UIs or understanding your data distribution.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use tracking_id for external system integration">
+    When integrating with external systems, use `tracking_id` to maintain references. This allows you to identify datasets without storing Trieve UUIDs in your system.
+  </Accordion>
+  
+  <Accordion title="Configure appropriately for your use case">
+    - Use smaller embedding models (`text-embedding-3-small`) for speed
+    - Use larger models (`text-embedding-3-large`) for accuracy
+    - Enable BM25 for keyword-heavy use cases
+    - Tune `N_RETRIEVALS_TO_INCLUDE` based on your RAG needs
+  </Accordion>
+  
+  <Accordion title="One dataset per customer for SaaS applications">
+    If building a multi-tenant SaaS application, create one dataset per customer. This provides:
+    - Complete data isolation
+    - Per-customer usage tracking
+    - Independent configuration
+  </Accordion>
+  
+  <Accordion title="Monitor dataset usage">
+    Use the usage endpoint to track chunk count, file storage, and API usage:
+    ```typescript
+    const usage = await trieve.getDatasetUsage(datasetId);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Testing and Production Datasets
+
+Maintain separate datasets for testing and production:
+
+```typescript
+const testDataset = await trieve.createDataset({
+  dataset_name: "My App - Test",
+  tracking_id: "myapp-test"
+});
+
+const prodDataset = await trieve.createDataset({
+  dataset_name: "My App - Production",
+  tracking_id: "myapp-prod"
+});
+```
+
+### Dataset per Language
+
+Create separate datasets for different languages to use language-specific embedding models:
+
+```typescript
+const enDataset = await trieve.createDataset({
+  dataset_name: "English Documentation",
+  server_configuration: {
+    EMBEDDING_MODEL_NAME: "text-embedding-3-small"
+  }
+});
+
+const esDataset = await trieve.createDataset({
+  dataset_name: "Spanish Documentation",
+  server_configuration: {
+    EMBEDDING_MODEL_NAME: "multilingual-e5-large"
+  }
+});
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Your First Dataset" icon="plus" href="/api-reference/datasets/create">
+    Learn how to create a dataset via the API
+  </Card>
+  <Card title="Add Chunks" icon="cube" href="/concepts/chunks">
+    Start adding searchable content to your dataset
+  </Card>
+</CardGroup>

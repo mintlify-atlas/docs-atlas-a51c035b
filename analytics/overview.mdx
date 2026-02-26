@@ -1,0 +1,176 @@
+---
+title: "Analytics Overview"
+description: "Comprehensive analytics and insights for search, RAG, and recommendation performance"
+---
+
+## Introduction
+
+Trieve's Analytics system provides deep insights into how users interact with your search, RAG (Retrieval-Augmented Generation), and recommendation features. Track performance metrics, user behavior, and optimize your search experience with data-driven decisions.
+
+## Analytics Categories
+
+### Search Analytics
+
+Monitor and analyze search query performance, including:
+
+- **Latency metrics** - Track response times with P50, P95, and P99 percentiles
+- **Query patterns** - Identify head queries, low confidence queries, and no-result queries
+- **User engagement** - Measure searches per user and search conversion rates
+- **Rating data** - Collect and analyze user ratings for search quality
+
+### CTR (Click-Through Rate) Analytics
+
+Understand user engagement through click behavior:
+
+- **Search CTR** - Track which search results users click on
+- **Recommendation CTR** - Monitor click rates for recommended items
+- **Position analysis** - Identify average click positions
+- **Click patterns** - Analyze searches with and without clicks
+
+### RAG Analytics
+
+Analyze conversational AI interactions:
+
+- **Topic tracking** - Monitor conversation topics and themes
+- **Message metrics** - Measure messages per user over time
+- **Rating insights** - Track user satisfaction with RAG responses
+- **Conversion tracking** - Monitor chat conversion rates
+
+### Recommendation Analytics
+
+Optimize recommendation performance:
+
+- **Usage patterns** - Track recommendation frequency and user engagement
+- **Low confidence detection** - Identify recommendations that need improvement
+- **CTR analysis** - Measure click-through rates for recommendations
+- **Conversion metrics** - Track recommendation conversion rates
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Real-time Tracking" icon="chart-line">
+    Monitor analytics events as they happen with ClickHouse-powered data storage
+  </Card>
+  <Card title="Flexible Filtering" icon="filter">
+    Filter analytics by date ranges, search types, and custom metadata
+  </Card>
+  <Card title="Granular Insights" icon="magnifying-glass-chart">
+    View metrics at different time granularities: hour, day, week, or month
+  </Card>
+  <Card title="Event Tracking" icon="calendar-check">
+    Send custom events and metadata to track user journeys
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+### 1. Send Analytics Events
+
+Use the `/analytics/events` endpoint to track user interactions:
+
+```json
+PUT /api/analytics/events
+{
+  "event_type": "click",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "clicked_chunk_id": "123e4567-e89b-12d3-a456-426614174000",
+  "position": 2,
+  "metadata": {
+    "user_id": "user_123",
+    "action": "view_details"
+  }
+}
+```
+
+### 2. Query Analytics Data
+
+Retrieve analytics using the structured query endpoints:
+
+```json
+POST /api/analytics/search
+{
+  "SearchMetrics": {
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z",
+        "lt": "2024-12-31T23:59:59Z"
+      }
+    }
+  }
+}
+```
+
+### 3. Rate Queries
+
+Collect user feedback to improve search quality:
+
+```json
+PUT /api/analytics/search
+{
+  "query_id": "550e8400-e29b-41d4-a716-446655440000",
+  "rating": 1,
+  "note": "Perfect results",
+  "metadata": {
+    "helpful": true
+  }
+}
+```
+
+## Analytics Workflow
+
+<Steps>
+  <Step title="Track Events">
+    Send user interaction events using the analytics endpoints as users search, click, and interact with your content
+  </Step>
+  <Step title="Monitor Metrics">
+    Query analytics endpoints to retrieve performance metrics, user behavior patterns, and CTR data
+  </Step>
+  <Step title="Identify Patterns">
+    Analyze head queries, low confidence searches, and popular filters to understand user needs
+  </Step>
+  <Step title="Optimize Results">
+    Use CTR data and user ratings to fine-tune re-ranking algorithms and improve search relevance
+  </Step>
+  <Step title="Track Revenue">
+    Monitor search and chat revenue attribution to measure business impact
+  </Step>
+</Steps>
+
+## Use Cases
+
+### Improve Search Quality
+
+Identify queries with no results or low confidence scores, then optimize your content or search parameters.
+
+### Optimize Re-ranking
+
+Use CTR data to understand which results users find most relevant and adjust ranking algorithms accordingly.
+
+### Monitor Performance
+
+Track latency metrics to ensure fast response times and identify performance bottlenecks.
+
+### Understand User Behavior
+
+Analyze popular searches, filters, and click patterns to better serve your users' needs.
+
+### Measure Business Impact
+
+Track conversion rates and revenue attribution to demonstrate the value of search and recommendations.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="CTR Data" href="/analytics/ctr-data" icon="mouse-pointer">
+    Learn how to track and analyze click-through rates
+  </Card>
+  <Card title="Query Analytics" href="/analytics/queries" icon="magnifying-glass">
+    Explore query analysis and search patterns
+  </Card>
+  <Card title="Metrics" href="/analytics/metrics" icon="chart-bar">
+    Understand available metrics and performance indicators
+  </Card>
+  <Card title="API Reference" href="/api-reference/analytics/get" icon="code">
+    View complete analytics API documentation
+  </Card>
+</CardGroup>

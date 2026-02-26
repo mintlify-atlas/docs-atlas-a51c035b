@@ -1,0 +1,575 @@
+---
+title: Hybrid Search
+description: Combine semantic and full-text search with cross-encoder re-ranking for optimal results
+---
+
+Hybrid search combines the strengths of semantic search (conceptual understanding) and full-text search (keyword precision) to deliver the best possible results. It's the default search method in Trieve and recommended for most use cases.
+
+## How Hybrid Search Works
+
+<Steps>
+  <Step title="Dual Vector Search">
+    The query is converted to both:
+    - **Dense vector** (semantic embedding) for conceptual similarity
+    - **Sparse vector** (SPLADE) for keyword matching
+    
+    Both searches execute in parallel against Qdrant.
+  </Step>
+  
+  <Step title="Result Fusion">
+    Results from both search methods are combined and deduplicated. Typically fetches ~20 results from each method.
+  </Step>
+  
+  <Step title="Cross-Encoder Re-ranking">
+    A cross-encoder model scores each query-chunk pair for true relevance, producing highly accurate rankings.
+  </Step>
+  
+  <Step title="Score Filtering & Sorting">
+    Results below the score threshold are removed, and the final ranked list is returned.
+  </Step>
+</Steps>
+
+<Info>
+  **Why hybrid works**: Semantic search finds conceptually similar content but may miss exact terms. Full-text search finds keyword matches but may miss paraphrases. Combining both captures the best of both worlds.
+</Info>
+
+## Basic Usage
+
+Set `search_type` to `"hybrid"` (or omit it, as hybrid is the default):
+
+<CodeGroup>
+```javascript JavaScript
+const response = await fetch('https://api.trieve.ai/api/chunk/search', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    search_type: 'hybrid',  // Can be omitted - hybrid is default
+    query: 'How do I optimize database performance?',
+    page_size: 10,
+    score_threshold: 0.5
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.trieve.ai/api/chunk/search',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'search_type': 'hybrid',
+        'query': 'How do I optimize database performance?',
+        'page_size': 10,
+        'score_threshold': 0.5
+    }
+)
+
+data = response.json()
+```
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/chunk/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -d '{
+    "search_type": "hybrid",
+    "query": "How do I optimize database performance?",
+    "page_size": 10,
+    "score_threshold": 0.5
+  }'
+```
+</CodeGroup>
+
+## Cross-Encoder Re-ranking
+
+The cross-encoder is what makes hybrid search special. Unlike bi-encoders (used in semantic search), cross-encoders:
+
+<Tabs>
+  <Tab title="How Cross-Encoders Work">
+    Cross-encoders process the query and chunk **together** as a single input:
+    
+    ```
+    Input: [QUERY] How do I optimize database performance? [SEP] [CHUNK] Database indexes significantly improve query speed...
+    Output: Relevance Score (0-1)
+    ```
+    
+    This allows the model to understand the relationship between query and content directly.
+  </Tab>
+  
+  <Tab title="Bi-Encoder vs Cross-Encoder">
+    **Bi-Encoder (Semantic Search)**:
+    - Query and chunks encoded separately
+    - Fast: vectors computed once, then compared
+    - Less accurate: no direct interaction between query and chunk
+    
+    **Cross-Encoder (Hybrid Re-ranking)**:
+    - Query and chunk encoded together
+    - Slower: must encode each pair
+    - More accurate: understands query-chunk relationship
+    
+    **Hybrid combines both**: Fast bi-encoder retrieval + accurate cross-encoder re-ranking.
+  </Tab>
+  
+  <Tab title="Performance Trade-off">
+    Cross-encoder re-ranking adds latency:
+    
+    - **~20 results**: +50-100ms
+    - **~50 results**: +100-200ms
+    - **~100 results**: +200-400ms
+    
+    The accuracy improvement is usually worth it for user-facing search.
+  </Tab>
+</Tabs>
+
+## Combined Boosting
+
+Use both semantic and full-text boosting together:
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "iPhone 15 reviews",
+  "scoring_options": {
+    "semantic_boost": {
+      "phrase": "flagship premium",
+      "distance_factor": 0.25
+    },
+    "fulltext_boost": {
+      "phrase": "iPhone 15",
+      "boost_factor": 3.0
+    }
+  }
+}
+```
+
+<Info>
+  **When to use both**:
+  - Semantic boost guides the conceptual direction
+  - Full-text boost ensures specific terms are prioritized
+  - Useful for branded product search, technical documentation, etc.
+</Info>
+
+## Score Threshold
+
+For hybrid search, score threshold applies **after** cross-encoder re-ranking:
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "machine learning frameworks",
+  "score_threshold": 0.6  // Filter after cross-encoder scoring
+}
+```
+
+<Warning>
+  **Score interpretation**: Cross-encoder scores are normalized 0-1 probabilities of relevance. A threshold of 0.5 means "at least 50% likely to be relevant".
+</Warning>
+
+### Recommended Thresholds
+
+| Threshold | Use Case |
+|-----------|----------|
+| 0.3-0.5 | Broad recall, exploratory search |
+| 0.5-0.7 | Balanced precision/recall (recommended) |
+| 0.7-0.9 | High precision, only very relevant results |
+| 0.9+ | Extremely strict, near-exact matches only |
+
+## Prefetch Amount Control
+
+Control how many results are fetched before re-ranking:
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "neural networks",
+  "page_size": 10,
+  // Hybrid implicitly uses cross-encoder re-ranking
+  // Default behavior: ~20 results from each method (semantic + fulltext)
+}
+```
+
+The default behavior is optimized for most cases, but you can customize the initial retrieval if needed through the implementation.
+
+## Hybrid Search Over Groups
+
+Hybrid search works with group searches too:
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "product documentation",
+  "group_size": 3,  // Return 3 chunks per group
+  "page_size": 5    // Return 5 groups
+}
+```
+
+This retrieves groups of chunks, useful for:
+- Document sections
+- Product families
+- Categorized content
+
+## Advanced Filtering
+
+Combine hybrid search with complex filters:
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "API rate limiting",
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_any": ["technical", "api"]
+      },
+      {
+        "field": "time_stamp",
+        "date_range": {
+          "gte": "2023-01-01T00:00:00"
+        }
+      }
+    ],
+    "must_not": [
+      {
+        "field": "metadata.deprecated",
+        "match_any": ["true"]
+      }
+    ]
+  }
+}
+```
+
+## MMR with Hybrid Search
+
+Maximal Marginal Relevance works with hybrid search to diversify results:
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "climate change impacts",
+  "sort_options": {
+    "mmr": {
+      "use_mmr": true,
+      "mmr_lambda": 0.5
+    }
+  }
+}
+```
+
+<Note>
+  MMR is applied **after** cross-encoder re-ranking, using the chunk embeddings to measure diversity.
+</Note>
+
+## Comparison: Semantic vs Full-Text vs Hybrid
+
+<Tabs>
+  <Tab title="Example 1: Technical Query">
+    **Query**: "How do I handle JWT authentication in React?"
+    
+    **Semantic only**: 
+    - ✅ Finds authentication tutorials
+    - ✅ Understands "handle" means "implement"
+    - ❌ Might miss content specifically mentioning JWT
+    - ❌ Could return OAuth or other auth methods
+    
+    **Full-text only**:
+    - ✅ Finds documents with "JWT" and "React"
+    - ✅ Precise keyword matching
+    - ❌ Misses paraphrased content ("token-based auth")
+    - ❌ No understanding of conceptual similarity
+    
+    **Hybrid**:
+    - ✅ Finds JWT + React content
+    - ✅ Also finds related concepts
+    - ✅ Cross-encoder picks truly relevant results
+    - ✅ Best of both worlds
+  </Tab>
+  
+  <Tab title="Example 2: Product Search">
+    **Query**: "affordable laptop for students"
+    
+    **Semantic only**:
+    - ✅ Understands "affordable" means budget-friendly
+    - ✅ Associates "students" with school, education
+    - ❌ May miss products with exact price ranges
+    
+    **Full-text only**:
+    - ✅ Finds documents mentioning "laptop" and "students"
+    - ❌ Might miss "budget", "cheap", "economical" synonyms
+    
+    **Hybrid**:
+    - ✅ Combines keyword precision with semantic understanding
+    - ✅ Finds both exact matches and conceptual matches
+    - ✅ Re-ranks to show most relevant student laptops
+  </Tab>
+  
+  <Tab title="Example 3: Content Discovery">
+    **Query**: "mental health benefits of exercise"
+    
+    **Semantic only**:
+    - ✅ Broad conceptual matching
+    - ✅ Finds related wellness content
+    - ❌ May be too broad, less precise
+    
+    **Full-text only**:
+    - ✅ Precise term matching
+    - ❌ Misses "fitness", "workout", "physical activity"
+    
+    **Hybrid**:
+    - ✅ Captures both direct mentions and conceptual coverage
+    - ✅ Cross-encoder ensures results actually address the query
+    - ✅ Balanced precision and recall
+  </Tab>
+</Tabs>
+
+## Performance Characteristics
+
+### Latency Breakdown
+
+```
+Typical hybrid search (10 results):
+├─ Dense vector search:     20-50ms
+├─ Sparse vector search:    20-50ms  (parallel)
+├─ Result fusion:           5-10ms
+├─ Cross-encoder re-rank:   50-150ms
+├─ Postgres metadata:       10-30ms
+└─ Total:                   ~100-250ms
+```
+
+### Optimization Strategies
+
+<AccordionGroup>
+  <Accordion title="Reduce Result Count">
+    Fewer results = faster cross-encoder re-ranking:
+    
+    ```javascript
+    {
+      "page_size": 5,  // Instead of 20
+      "slim_chunks": true
+    }
+    ```
+    
+    Saves 30-100ms depending on page size reduction.
+  </Accordion>
+  
+  <Accordion title="Use Caching">
+    Cache frequent queries at the application level:
+    
+    ```javascript
+    const cacheKey = `search:${searchType}:${query}:${page}`;
+    let results = cache.get(cacheKey);
+    
+    if (!results) {
+      results = await performSearch();
+      cache.set(cacheKey, results, 300); // 5 min TTL
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Async Prefetching">
+    For pagination, prefetch next page:
+    
+    ```javascript
+    // User on page 1
+    const page1 = await search({ page: 1 });
+    
+    // Prefetch page 2 in background
+    search({ page: 2 }).then(cache);
+    ```
+  </Accordion>
+  
+  <Accordion title="Disable Total Pages">
+    Skip expensive count query:
+    
+    ```javascript
+    {
+      "get_total_pages": false
+    }
+    ```
+    
+    Saves 50-200ms, especially with complex filters.
+  </Accordion>
+</AccordionGroup>
+
+## Common Use Cases
+
+### E-commerce Search
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "wireless noise cancelling headphones under $200",
+  "filters": {
+    "must": [
+      {
+        "field": "num_value",  // Price field
+        "range": { "lte": 200 }
+      },
+      {
+        "field": "metadata.in_stock",
+        "boolean": true
+      }
+    ]
+  },
+  "scoring_options": {
+    "fulltext_boost": {
+      "phrase": "noise cancelling",
+      "boost_factor": 2.0
+    }
+  }
+}
+```
+
+### Knowledge Base / Documentation
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "how to configure SSL certificates",
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_any": ["tutorial", "guide", "howto"]
+      }
+    ]
+  },
+  "highlight_options": {
+    "highlight_results": true,
+    "highlight_strategy": "v2",
+    "highlight_threshold": 0.7
+  },
+  "page_size": 5
+}
+```
+
+### Content Discovery
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "latest developments in renewable energy",
+  "filters": {
+    "must": [
+      {
+        "field": "time_stamp",
+        "date_range": {
+          "gte": "2024-01-01T00:00:00"
+        }
+      }
+    ]
+  },
+  "sort_options": {
+    "mmr": {
+      "use_mmr": true,
+      "mmr_lambda": 0.6
+    }
+  },
+  "page_size": 15
+}
+```
+
+## Response Format
+
+```json
+{
+  "id": "search-uuid",
+  "chunks": [
+    {
+      "chunk": {
+        "id": "chunk-uuid",
+        "content": "Database performance can be optimized through indexing...",
+        "link": "https://example.com/db-optimization",
+        "metadata": {
+          "category": "technical",
+          "author": "Jane Doe"
+        },
+        "created_at": "2024-01-15T10:30:00Z"
+      },
+      "score": 0.87  // Cross-encoder score (0-1)
+    }
+  ],
+  "corrected_query": null,
+  "total_pages": 4
+}
+```
+
+<Note>
+  **Score interpretation**: Scores from hybrid search are cross-encoder relevance scores ranging from 0 (not relevant) to 1 (highly relevant). Scores above 0.7 indicate strong relevance.
+</Note>
+
+## Best Practices
+
+1. **Start with hybrid** - It's the default for good reason
+2. **Use score thresholds** - Filter low-quality results (0.5-0.7 recommended)
+3. **Apply filters strategically** - Combine search with metadata filters
+4. **Enable highlighting** - Show users why results matched
+5. **Optimize for latency** - Use slim_chunks, disable get_total_pages
+6. **Monitor query patterns** - Cache frequent queries
+7. **Use MMR for diversity** - When showing top results
+
+## When NOT to Use Hybrid
+
+<Warning>
+  **Consider alternatives when**:
+  
+  - **Very specific exact matching needed**: Use full-text search
+  - **Pure conceptual search**: Use semantic search
+  - **Latency is critical (less than 50ms)**: Use semantic or full-text alone
+  - **Simple keyword search**: Use BM25 for speed
+</Warning>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="High latency (over 500ms)">
+    - Reduce `page_size`
+    - Enable `slim_chunks`
+    - Disable `get_total_pages`
+    - Check filter complexity
+    - Consider caching
+  </Accordion>
+  
+  <Accordion title="Low quality results">
+    - Increase `score_threshold` (try 0.6-0.7)
+    - Check if filters are too restrictive
+    - Verify chunk quality and size
+    - Review embedding model choice
+  </Accordion>
+  
+  <Accordion title="Too few results">
+    - Lower `score_threshold`
+    - Broaden filters
+    - Check if dataset has relevant content
+    - Try semantic or fulltext alone to debug
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Filters" icon="filter" href="/search/filters">
+    Master advanced filtering for hybrid search
+  </Card>
+  <Card title="Recommendations" icon="sparkles" href="/search/recommendations">
+    Build recommendation systems
+  </Card>
+  <Card title="Semantic Search" icon="brain" href="/search/semantic-search">
+    Deep dive into vector search
+  </Card>
+  <Card title="Full-Text Search" icon="magnifying-glass" href="/search/full-text-search">
+    Understand SPLADE keyword search
+  </Card>
+</CardGroup>

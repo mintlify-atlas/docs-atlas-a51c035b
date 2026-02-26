@@ -1,0 +1,117 @@
+---
+title: "Update Group"
+description: "Update an existing chunk group's properties"
+---
+
+## PUT /chunk_group
+
+Update a chunk_group. One of group_id or tracking_id must be provided. If you try to change the tracking_id to one that already exists, this operation will fail.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key for authentication. Must have admin role.
+</ParamField>
+
+### Body
+
+<ParamField body="group_id" type="string">
+  Id of the chunk_group to update. One of group_id or tracking_id must be provided.
+</ParamField>
+
+<ParamField body="tracking_id" type="string">
+  Tracking Id of the chunk_group to update. One of group_id or tracking_id must be provided.
+</ParamField>
+
+<ParamField body="name" type="string">
+  Name to assign to the chunk_group. Does not need to be unique. If not provided, the name will not be updated.
+</ParamField>
+
+<ParamField body="description" type="string">
+  Description to assign to the chunk_group. Convenience field for you to avoid having to remember what the group is for. If not provided, the description will not be updated.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Optional metadata to assign to the chunk_group. This is a JSON object that can store any additional information you want to associate with the chunks inside of the chunk_group.
+</ParamField>
+
+<ParamField body="tag_set" type="array">
+  Optional tags to assign to the chunk_group. This is a list of strings that can be used to categorize the chunks inside the chunk_group.
+</ParamField>
+
+<ParamField body="update_chunks" type="boolean" default="false">
+  Flag to update the chunks in the group. If true, each chunk in the group will be updated by appending the group's tags to the chunk's tags. Default is false.
+</ParamField>
+
+### Response
+
+Returns a 204 No Content response on success.
+
+<RequestExample>
+
+```bash cURL
+curl -X PUT "https://api.trieve.ai/api/chunk_group" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+    "name": "Updated T-Shirt Collection",
+    "description": "Updated description for the t-shirt collection",
+    "tag_set": ["tshirt", "oversized", "clothing", "new"],
+    "update_chunks": false
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+});
+
+await trieve.updateChunkGroup({
+  group_id: "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+  name: "Updated T-Shirt Collection",
+  description: "Updated description for the t-shirt collection",
+  tag_set: ["tshirt", "oversized", "clothing", "new"],
+  update_chunks: false
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="tr-********************************",
+    dataset_id="d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+)
+
+trieve.update_chunk_group(
+    group_id="3c90c3cc-0d44-4b50-8888-8dd25736052a",
+    name="Updated T-Shirt Collection",
+    description="Updated description for the t-shirt collection",
+    tag_set=["tshirt", "oversized", "clothing", "new"],
+    update_chunks=False
+)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```text 204 No Content
+```
+
+```json 400 Bad Request
+{
+  "message": "Service error relating to updating the chunkGroup"
+}
+```
+
+</ResponseExample>

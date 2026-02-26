@@ -1,0 +1,227 @@
+---
+title: "Create Message"
+description: "Create a message and generate an assistant response using RAG"
+---
+
+## POST /api/message
+
+Create a message attached to a topic to coordinate memory in gen-AI chat sessions. Messages can include text, audio, or images, and the assistant will respond using RAG (Retrieval-Augmented Generation) with relevant chunks from your dataset.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset ID or tracking_id to use for the request
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  API key with admin role for the dataset's organization
+</ParamField>
+
+### Body
+
+<ParamField body="topic_id" type="string" required>
+  The ID of the topic to attach the message to
+</ParamField>
+
+<ParamField body="new_message_content" type="string">
+  The content of the user message to attach to the topic and generate an assistant response to. Required if `audio_input` is not provided.
+</ParamField>
+
+<ParamField body="audio_input" type="string">
+  The base64 encoded audio input of the user message. The audio will be transcribed using Whisper-1 and then processed.
+</ParamField>
+
+<ParamField body="image_urls" type="array">
+  Array of image URLs to attach to the message for vision-enabled models
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  The ID of the user making the request. Used to track user interactions with RAG results.
+</ParamField>
+
+#### Search Configuration
+
+<ParamField body="search_query" type="string">
+  The search query to use for RAG. If not specified, defaults to the last user message or HyDE if enabled in dataset configuration.
+</ParamField>
+
+<ParamField body="search_type" type="string" default="hybrid">
+  Search method to use: `semantic`, `fulltext`, `hybrid`, or `bm25`
+</ParamField>
+
+<ParamField body="page_size" type="integer">
+  Number of chunks to fetch during RAG. If 0, no search will be performed. Overrides dataset configuration.
+</ParamField>
+
+<ParamField body="score_threshold" type="number" default={0.0}>
+  Filter out chunks with a score below this threshold
+</ParamField>
+
+<ParamField body="use_group_search" type="boolean" default={false}>
+  If true, search will be conducted using the `search_over_groups` API
+</ParamField>
+
+<ParamField body="use_agentic_search" type="boolean" default={false}>
+  If true, search will be conducted using LLM tool calling for agentic search
+</ParamField>
+
+<ParamField body="filters" type="object">
+  JSON object to filter chunks by metadata
+</ParamField>
+
+<ParamField body="sort_options" type="object">
+  Options to rerank chunks in the result set
+</ParamField>
+
+<ParamField body="highlight_options" type="object">
+  Options to highlight chunks in the result set
+</ParamField>
+
+<ParamField body="typo_options" type="object">
+  Options to handle typos in the search query
+</ParamField>
+
+<ParamField body="use_quote_negated_terms" type="boolean" default={false}>
+  Parse quoted and `-` prefixed words as required and negated terms
+</ParamField>
+
+<ParamField body="remove_stop_words" type="boolean" default={false}>
+  Remove stop words from the query. Queries that are entirely stop words will be preserved.
+</ParamField>
+
+#### LLM Configuration
+
+<ParamField body="llm_options" type="object">
+  LLM options for the completion. If not specified, defaults to dataset's LLM options.
+  
+  - `temperature` (number): Sampling temperature between 0 and 2. Default is 0.5.
+  - `frequency_penalty` (number): Penalty between -2.0 and 2.0. Default is 0.7.
+  - `presence_penalty` (number): Penalty between -2.0 and 2.0. Default is 0.7.
+  - `stop_tokens` (array): Up to 4 sequences where the API will stop generating tokens
+  - `max_tokens` (integer): Maximum tokens to generate
+  - `system_prompt` (string): Override the dataset's system prompt
+  - `stream_response` (boolean): Whether to stream the response. Default is true.
+  - `completion_first` (boolean): Stream completion before chunks. Default is false.
+</ParamField>
+
+<ParamField body="model" type="string">
+  Model name to use for completion. If not specified, uses the dataset's default model.
+</ParamField>
+
+<ParamField body="context_options" type="object">
+  Options for context window configuration
+</ParamField>
+
+<ParamField body="concat_user_messages_query" type="boolean" default={false}>
+  If true, all user messages in the topic will be concatenated and used as the search query
+</ParamField>
+
+<ParamField body="number_of_messages_to_include" type="integer" default={10}>
+  Number of messages to include in the context window
+</ParamField>
+
+<ParamField body="rag_context" type="string">
+  Override how chunks are placed into the context window
+</ParamField>
+
+<ParamField body="no_result_message" type="string">
+  Message to return when no chunks are found above the score threshold
+</ParamField>
+
+<ParamField body="only_include_docs_used" type="boolean">
+  If true, only include the docs that were used in the completion
+</ParamField>
+
+<ParamField body="currency" type="string" default="USD">
+  Currency to use for the completion
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Metadata to associate with the event created from this request
+</ParamField>
+
+### Response
+
+<ResponseField name="response" type="string | stream">
+  **Streaming Response (default):** An HTTP stream where chunks are sent first if RAG is enabled, followed by `||`, then the assistant message. The structure is `[chunks]||message`.
+  
+  **Non-streaming Response:** A JSON string containing the LLM's generated inference.
+</ResponseField>
+
+<ResponseField name="TR-QueryID" type="string">
+  Query ID header used for tracking analytics
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/message" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: ********-****-****-****-************" \
+  -d '{
+    "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+    "new_message_content": "What are the best practices for RAG?",
+    "search_type": "hybrid",
+    "page_size": 10,
+    "llm_options": {
+      "temperature": 0.7,
+      "stream_response": true
+    }
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "********-****-****-****-************"
+});
+
+const message = await trieve.createMessage({
+  topic_id: "550e8400-e29b-41d4-a716-446655440000",
+  new_message_content: "What are the best practices for RAG?",
+  search_type: "hybrid",
+  page_size: 10,
+  llm_options: {
+    temperature: 0.7,
+    stream_response: true
+  }
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="tr-********************************",
+  dataset_id="********-****-****-****-************"
+)
+
+message = trieve.create_message(
+  topic_id="550e8400-e29b-41d4-a716-446655440000",
+  new_message_content="What are the best practices for RAG?",
+  search_type="hybrid",
+  page_size=10,
+  llm_options={
+    "temperature": 0.7,
+    "stream_response": True
+  }
+)
+```
+
+### Streaming Response Format
+
+When `stream_response` is true (default), the response is an HTTP stream:
+
+1. **Chunks First (if RAG enabled):** JSON array of retrieved chunks
+2. **Separator:** `||`
+3. **Assistant Message:** Streaming text of the LLM's response
+
+Example stream:
+```
+[{"chunk_html":"...","metadata":{...},"score":0.95}]||Here are the best practices for RAG: ...
+```
+
+To reverse the order and receive the completion before chunks, set `llm_options.completion_first` to `true`. The separator will still be `||`.

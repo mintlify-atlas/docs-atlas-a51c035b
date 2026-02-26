@@ -1,0 +1,282 @@
+---
+title: CLI
+description: Command-line interface for interacting with the Trieve API for file uploads, search, and RAG queries
+---
+
+The Trieve CLI provides a convenient command-line interface for interacting with the Trieve API. Upload files, check processing status, ask questions against your knowledge base, and configure your RAG system directly from your terminal.
+
+## Installation
+
+Install the CLI globally using npm:
+
+```bash
+npm install -g trieve-cli
+```
+
+## Configuration
+
+Before using the CLI, configure it with your Trieve credentials:
+
+```bash
+trieve configure
+```
+
+This interactive command will prompt you for:
+
+- **Trieve Organization ID**: Your organization UUID from the dashboard
+- **Trieve Dataset ID**: The dataset UUID you want to work with
+- **Trieve API Key**: Your API key from dashboard settings
+- **User ID**: For topic ownership (used in RAG queries)
+
+### Environment Variables
+
+Alternatively, set these environment variables instead of using the configure command:
+
+```bash
+export TRIEVE_ORGANIZATION_ID="your-org-id"
+export TRIEVE_DATASET_ID="your-dataset-id"
+export TRIEVE_API_KEY="tr-********************************"
+```
+
+## Commands
+
+### Upload Files
+
+Upload a file to your Trieve dataset:
+
+```bash
+trieve upload [filePath]
+```
+
+**Options:**
+
+- `-t, --tracking-id <trackingId>`: Optional custom tracking ID for the file
+
+**Examples:**
+
+```bash
+# Upload a specific file
+trieve upload ./documents/report.pdf
+
+# Upload with a custom tracking ID
+trieve upload ./docs/guide.md --tracking-id "guide-v2"
+
+# Interactive mode (prompts for file path)
+trieve upload
+```
+
+### Check Upload Status
+
+Check the processing status of your uploaded files:
+
+```bash
+trieve check-upload-status [options]
+```
+
+**Options:**
+
+- `-t, --tracking-id <trackingId>`: Check status for a specific tracking ID
+
+**Examples:**
+
+```bash
+# Interactive mode - shows menu of uploaded files
+trieve check-upload-status
+
+# Check specific file by tracking ID
+trieve check-upload-status --tracking-id "guide-v2"
+```
+
+The status command shows:
+
+- File processing state (pending, processing, completed, failed)
+- Number of chunks created
+- Any errors encountered during processing
+
+### Ask Questions
+
+Ask questions against your Trieve dataset using RAG:
+
+```bash
+trieve ask [question]
+```
+
+**Examples:**
+
+```bash
+# Ask a specific question
+trieve ask "What are the key findings in the report?"
+
+# Interactive mode (prompts for question)
+trieve ask
+```
+
+The response is streamed back in real-time and includes:
+
+- AI-generated answer based on your dataset
+- Source references with expandable details (press 'j' to expand)
+- Relevant chunks used to generate the answer
+
+### Update Tool Configuration
+
+Customize the RAG system prompt and tool behavior:
+
+```bash
+trieve update-tool-config [options]
+```
+
+**Options:**
+
+- `-t, --tool-description <toolDescription>`: Instructions for when the LLM should use the search tool
+- `-q, --query-description <queryDescription>`: How the LLM should formulate search queries
+- `-s, --system-prompt <systemPrompt>`: Custom system prompt for the AI assistant
+
+**Examples:**
+
+```bash
+# Update query description
+trieve update-tool-config --query-description "Create precise search queries focusing on technical terms"
+
+# Update system prompt
+trieve update-tool-config --system-prompt "You are a helpful technical documentation assistant"
+
+# Update multiple settings
+trieve update-tool-config \
+  --tool-description "Use this tool for technical documentation queries" \
+  --query-description "Focus on API endpoints and code examples" \
+  --system-prompt "You are an expert API documentation assistant"
+```
+
+## Features
+
+### Secure Configuration
+
+Your API keys and configuration are stored locally and securely. The CLI never logs or transmits your credentials except when making authorized API requests.
+
+### File Upload Support
+
+The CLI supports uploading various file formats:
+
+- PDF documents
+- Markdown files
+- Text files
+- HTML files
+- Word documents
+- And more
+
+### Status Tracking
+
+Track the processing status of your uploaded files:
+
+- Monitor when files are being processed
+- See how many chunks were created
+- Identify and troubleshoot any errors
+
+### Interactive Q&A
+
+Ask questions and receive AI-generated answers based on your uploaded documents:
+
+- Streamed responses for real-time feedback
+- Source references for transparency
+- Expandable details to see the underlying data
+
+### Customizable RAG
+
+Fine-tune the RAG behavior:
+
+- Configure when the search tool is invoked
+- Customize how search queries are formulated
+- Set custom system prompts for domain-specific responses
+
+## Complete Workflow Example
+
+Here's a complete workflow using the Trieve CLI:
+
+```bash
+# 1. Configure the CLI (first time only)
+trieve configure
+
+# 2. Upload a document
+trieve upload ./documents/technical-guide.pdf --tracking-id "tech-guide-v1"
+
+# 3. Check if processing is complete
+trieve check-upload-status --tracking-id "tech-guide-v1"
+
+# 4. Customize the RAG configuration
+trieve update-tool-config \
+  --query-description "Create precise technical queries" \
+  --system-prompt "You are a technical documentation expert"
+
+# 5. Ask a question about the content
+trieve ask "What are the installation requirements?"
+
+# 6. Ask follow-up questions
+trieve ask "How do I configure the system?"
+```
+
+## Demo Video
+
+Watch the Trieve CLI in action:
+
+[![Trieve CLI Demo](https://img.youtube.com/vi/SAV-esDsRUk/0.jpg)](https://www.youtube.com/watch?v=SAV-esDsRUk)
+
+[Watch on YouTube](https://www.youtube.com/watch?v=SAV-esDsRUk)
+
+## Development
+
+Build the CLI from source:
+
+```bash
+# Clone the repository
+git clone https://github.com/devflowinc/trieve.git
+cd trieve/clients/cli
+
+# Install dependencies
+npm install
+
+# Build the TypeScript code
+npm run build
+
+# Run locally
+npm start
+```
+
+## Troubleshooting
+
+### Configuration Not Found
+
+If you see "Configuration not found" errors:
+
+```bash
+# Reconfigure the CLI
+trieve configure
+
+# Or set environment variables
+export TRIEVE_API_KEY="your-api-key"
+export TRIEVE_DATASET_ID="your-dataset-id"
+export TRIEVE_ORGANIZATION_ID="your-org-id"
+```
+
+### Upload Failures
+
+If file uploads fail:
+
+- Check that the file exists and is readable
+- Verify your API key has upload permissions
+- Check file size limits in your plan
+- Ensure the file format is supported
+
+### RAG Queries Not Working
+
+If RAG queries return errors:
+
+- Ensure files have finished processing
+- Verify your dataset has content
+- Check that your API key has search permissions
+- Try simplifying your question
+
+## Support
+
+- [GitHub Repository](https://github.com/devflowinc/trieve/tree/main/clients/cli)
+- [Discord Community](https://discord.gg/eBJXXZDB8z)
+- [Documentation](/)

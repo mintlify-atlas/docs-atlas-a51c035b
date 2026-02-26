@@ -1,0 +1,329 @@
+---
+title: Semantic Search
+description: Vector-based semantic similarity search using dense embeddings
+---
+
+Semantic search uses dense vector embeddings to find chunks based on conceptual similarity rather than exact keyword matching. This enables finding relevant results even when query terms don't appear verbatim in the content.
+
+## How It Works
+
+<Steps>
+  <Step title="Query Embedding">
+    Your search query is converted into a dense vector using the configured embedding model (e.g., OpenAI text-embedding-3-small, BGE, or custom models).
+  </Step>
+  
+  <Step title="Vector Similarity Search">
+    Trieve searches the Qdrant vector database using approximate nearest neighbor search (HNSW) to find chunks with similar embeddings.
+  </Step>
+  
+  <Step title="Scoring">
+    Results are scored using the configured distance metric (cosine similarity, euclidean, dot product, or manhattan distance).
+  </Step>
+  
+  <Step title="Filtering & Ranking">
+    Filters are applied and results are ranked by similarity score, with optional MMR diversification.
+  </Step>
+</Steps>
+
+## Basic Usage
+
+To perform a semantic search, set `search_type` to `"semantic"`:
+
+<CodeGroup>
+```javascript JavaScript
+const response = await fetch('https://api.trieve.ai/api/chunk/search', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    search_type: 'semantic',
+    query: 'What are neural networks used for?',
+    page_size: 10,
+    score_threshold: 0.7
+  })
+});
+
+const data = await response.json();
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.trieve.ai/api/chunk/search',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'search_type': 'semantic',
+        'query': 'What are neural networks used for?',
+        'page_size': 10,
+        'score_threshold': 0.7
+    }
+)
+
+data = response.json()
+```
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/chunk/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -d '{
+    "search_type": "semantic",
+    "query": "What are neural networks used for?",
+    "page_size": 10,
+    "score_threshold": 0.7
+  }'
+```
+</CodeGroup>
+
+## Semantic Boosting
+
+Semantic boosting allows you to nudge the query vector towards specific concepts, influencing the search results:
+
+```javascript
+{
+  "search_type": "semantic",
+  "query": "smartphone features",
+  "scoring_options": {
+    "semantic_boost": {
+      "phrase": "flagship premium",
+      "distance_factor": 0.25
+    }
+  }
+}
+```
+
+<Info>
+  **How it works**: The semantic boost creates a vector from the phrase and moves your query vector towards (positive factor) or away from (negative factor) that concept in the embedding space. A `distance_factor` of 0.25 moves the query vector 25% closer to the boost phrase.
+</Info>
+
+### Use Cases for Semantic Boosting
+
+- **Domain-specific emphasis**: Boost medical terminology for healthcare searches
+- **Tone adjustment**: Nudge results toward formal or casual language
+- **Topic refinement**: Emphasize subtopics within a broader search
+
+## Multi-Query Search
+
+Semantic search supports multiple weighted queries that are combined into a single search:
+
+```javascript
+{
+  "search_type": "semantic",
+  "query": {
+    "queries": [
+      {
+        "query": "machine learning algorithms",
+        "weight": 0.7
+      },
+      {
+        "query": "deep learning frameworks",
+        "weight": 0.3
+      }
+    ]
+  }
+}
+```
+
+<Note>
+  Multi-query search **only works with semantic search**. The vectors are weighted and averaged before querying Qdrant.
+</Note>
+
+## Score Threshold
+
+Filter results by minimum similarity score:
+
+```javascript
+{
+  "search_type": "semantic",
+  "query": "quantum computing",
+  "score_threshold": 0.75  // Only return results with score >= 0.75
+}
+```
+
+<Warning>
+  **Distance metric matters**: For cosine similarity, higher scores are better. For Euclidean and Manhattan distances, **lower** scores are better, so the threshold behavior is inverted.
+</Warning>
+
+## MMR (Maximal Marginal Relevance)
+
+MMR diversifies results to reduce redundancy:
+
+```javascript
+{
+  "search_type": "semantic",
+  "query": "climate change impacts",
+  "sort_options": {
+    "mmr": {
+      "use_mmr": true,
+      "mmr_lambda": 0.5  // Balance between relevance (1.0) and diversity (0.0)
+    }
+  }
+}
+```
+
+### MMR Lambda Values
+
+- `1.0` - Pure relevance (no diversification)
+- `0.5` - Balanced approach
+- `0.0` - Maximum diversity (may sacrifice relevance)
+
+<Tabs>
+  <Tab title="High Relevance (λ=0.9)">
+    Results are very similar to each other and the query. Best for finding exact matches.
+    
+    **Use when**: You want comprehensive coverage of a specific topic
+  </Tab>
+  
+  <Tab title="Balanced (λ=0.5)">
+    Good mix of relevant but diverse results. Default recommendation.
+    
+    **Use when**: You want variety while maintaining relevance
+  </Tab>
+  
+  <Tab title="High Diversity (λ=0.1)">
+    Results cover different aspects with more variation. Some may be less relevant.
+    
+    **Use when**: Exploring a topic or avoiding redundant content
+  </Tab>
+</Tabs>
+
+## Embedding Models
+
+Trieve supports multiple embedding models configurable per dataset:
+
+| Model | Dimensions | Best For |
+|-------|------------|----------|
+| text-embedding-3-small | 1536 | General purpose, cost-effective |
+| text-embedding-3-large | 3072 | Maximum quality |
+| BGE-M3 | 1024 | Multilingual content |
+| Custom models | Variable | Domain-specific needs |
+
+<Info>
+  **Model Configuration**: Embedding models are set at the dataset level in your dataset configuration. All chunks in a dataset use the same model.
+</Info>
+
+## Re-ranking with Semantic
+
+You can prefetch more results with another method and re-rank with semantic search:
+
+```javascript
+{
+  "search_type": "fulltext",  // Primary search method
+  "query": "machine learning",
+  "sort_options": {
+    "sort_by": {
+      "rerank_type": "semantic",
+      "prefetch_amount": 100  // Fetch 100 fulltext results, re-rank by semantic
+    }
+  }
+}
+```
+
+## Pagination
+
+```javascript
+{
+  "search_type": "semantic",
+  "query": "artificial intelligence",
+  "page": 2,              // 1-indexed page number
+  "page_size": 20,        // Results per page
+  "get_total_pages": true // Get total page count (adds 50-200ms latency)
+}
+```
+
+## Response Format
+
+Semantic search responses include similarity scores:
+
+```json
+{
+  "id": "search-uuid",
+  "chunks": [
+    {
+      "chunk": {
+        "id": "chunk-uuid",
+        "content": "Neural networks are computational models...",
+        "metadata": {...}
+      },
+      "score": 0.92  // Cosine similarity score (0-1, higher is better)
+    }
+  ],
+  "total_pages": 3
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Query Formulation">
+    - Use natural language queries
+    - Include context for ambiguous terms
+    - Longer queries (5-15 words) often work better
+    - Avoid very short queries (1-2 words) which may be too broad
+  </Accordion>
+  
+  <Accordion title="Threshold Selection">
+    - Start with `0.7` for cosine similarity
+    - Adjust based on result quality
+    - Lower thresholds for broader recall
+    - Higher thresholds for precision
+  </Accordion>
+  
+  <Accordion title="Performance Optimization">
+    - Use `slim_chunks: true` to reduce response size
+    - Disable `get_total_pages` unless needed
+    - Consider caching frequent queries
+    - Use appropriate page sizes (10-50 typical)
+  </Accordion>
+  
+  <Accordion title="Quality Improvement">
+    - Use semantic boosting for domain-specific searches
+    - Enable MMR for diverse result sets
+    - Combine with filters for targeted searches
+    - Consider hybrid search for best results
+  </Accordion>
+</AccordionGroup>
+
+## Common Issues
+
+<Warning>
+  **Low quality results?**
+  - Check your embedding model matches your content language
+  - Verify chunks are properly split (not too large or small)
+  - Consider using hybrid search instead
+  - Adjust score threshold
+</Warning>
+
+<Warning>
+  **Slow queries?**
+  - Reduce page size
+  - Use slim_chunks mode
+  - Avoid get_total_pages
+  - Check filter complexity
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Full-Text Search" icon="magnifying-glass" href="/search/full-text-search">
+    Learn about SPLADE-based keyword search
+  </Card>
+  <Card title="Hybrid Search" icon="layer-group" href="/search/hybrid-search">
+    Combine semantic and full-text for best results
+  </Card>
+  <Card title="Filters" icon="filter" href="/search/filters">
+    Apply filters to narrow results
+  </Card>
+  <Card title="Recommendations" icon="sparkles" href="/search/recommendations">
+    Build recommendation engines
+  </Card>
+</CardGroup>

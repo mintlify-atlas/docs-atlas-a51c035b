@@ -1,0 +1,308 @@
+---
+title: TypeScript SDK
+description: Official TypeScript SDK for the Trieve API with full type safety and comprehensive search capabilities
+---
+
+The Trieve TypeScript SDK provides a fully-typed interface for interacting with the Trieve API. It supports all major search types including semantic, full-text, and hybrid search, along with analytics, file uploads, and more.
+
+## Installation
+
+Install the SDK using your preferred package manager:
+
+<CodeGroup>
+
+```bash npm
+npm install trieve-ts-sdk
+```
+
+```bash yarn
+yarn add trieve-ts-sdk
+```
+
+```bash pnpm
+pnpm install trieve-ts-sdk
+```
+
+</CodeGroup>
+
+## Quick Start
+
+Initialize the SDK with your API key and dataset ID:
+
+```typescript
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "your-dataset-id",
+});
+```
+
+## Configuration Options
+
+The SDK accepts the following configuration options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `apiKey` | string | required | Your Trieve API key from the dashboard |
+| `datasetId` | string | optional | Default dataset ID for operations |
+| `organizationId` | string | optional | Organization ID for organization-level operations |
+| `baseUrl` | string | `https://api.trieve.ai` | API base URL |
+| `debug` | boolean | `false` | Enable debug logging |
+| `omitCredentials` | boolean | `false` | Omit credentials from requests |
+
+## Core Features
+
+### Search
+
+Perform semantic, full-text, or hybrid search across your dataset:
+
+```typescript
+const results = await trieve.search({
+  query: "machine learning algorithms",
+  search_type: "hybrid",
+  page_size: 10,
+  page: 1,
+});
+
+console.log(results.chunks);
+```
+
+#### Search Types
+
+- **`semantic`**: Vector-based semantic search for conceptual matches
+- **`fulltext`**: Traditional keyword-based search
+- **`hybrid`**: Combines semantic and full-text search for best results
+- **`bm25`**: BM25 ranking algorithm for text search
+
+### Create Chunks
+
+Add content to your dataset:
+
+```typescript
+const chunk = await trieve.createChunk({
+  chunk_html: "<p>Your content here</p>",
+  link: "https://example.com/page",
+  tag_set: ["tutorial", "getting-started"],
+  metadata: {
+    title: "Getting Started Guide",
+    author: "John Doe",
+  },
+});
+```
+
+### Autocomplete
+
+Provide real-time search suggestions:
+
+```typescript
+const suggestions = await trieve.autocomplete({
+  query: "how to",
+  search_type: "fulltext",
+  extend_results: true,
+  page_size: 5,
+});
+```
+
+### RAG (Retrieval Augmented Generation)
+
+Generate AI responses based on your dataset:
+
+```typescript
+const response = await trieve.createMessageCompletion({
+  topic_id: "topic-uuid",
+  new_message_content: "What are the benefits of using Trieve?",
+  llm_options: {
+    model: "gpt-4",
+    temperature: 0.7,
+  },
+});
+```
+
+### Recommended Chunks
+
+Get recommendations based on similar content:
+
+```typescript
+const recommendations = await trieve.getRecommendedChunks({
+  positive_chunk_ids: ["chunk-id-1", "chunk-id-2"],
+  limit: 10,
+  strategy: "average_vector",
+});
+```
+
+### File Upload
+
+Upload and process files:
+
+```typescript
+const file = new File([content], "document.pdf", { type: "application/pdf" });
+
+const upload = await trieve.uploadFile({
+  file: file,
+  tag_set: ["documentation"],
+  metadata: {
+    department: "engineering",
+  },
+});
+```
+
+## Advanced Features
+
+### Chunk Groups
+
+Organize chunks into groups:
+
+```typescript
+// Create a group
+const group = await trieve.createChunkGroup({
+  name: "Product Documentation",
+  description: "All product-related docs",
+  tag_set: ["product", "docs"],
+});
+
+// Add chunks to group
+await trieve.addChunkToGroup({
+  chunk_id: "chunk-uuid",
+  group_id: group.id,
+});
+
+// Search within group
+const groupResults = await trieve.searchWithinGroup({
+  query: "installation",
+  group_id: group.id,
+  search_type: "hybrid",
+});
+```
+
+### Analytics
+
+Track and analyze search behavior:
+
+```typescript
+import { AnalyticsQueryBuilder } from "trieve-ts-sdk";
+
+// Get search analytics
+const analytics = await trieve.getSearchAnalytics({
+  filter: {
+    date_range: {
+      gt: new Date("2024-01-01"),
+      lt: new Date("2024-12-31"),
+    },
+  },
+  granularity: "day",
+});
+
+// Send custom events
+await trieve.sendEventData({
+  event_type: "click",
+  event_data: {
+    chunk_id: "chunk-uuid",
+    request_id: "request-uuid",
+  },
+});
+```
+
+### Dataset Management
+
+```typescript
+// Create a dataset
+const dataset = await trieve.createDataset({
+  dataset_name: "My New Dataset",
+  organization_id: "org-uuid",
+  server_configuration: {
+    EMBEDDING_SIZE: 1536,
+    DISTANCE_METRIC: "cosine",
+  },
+});
+
+// Update dataset
+await trieve.updateDataset({
+  dataset_id: dataset.id,
+  dataset_name: "Updated Dataset Name",
+});
+
+// Clear dataset
+await trieve.clearDataset({
+  dataset_id: dataset.id,
+});
+```
+
+### Filtering
+
+Apply advanced filters to your searches:
+
+```typescript
+const filtered = await trieve.search({
+  query: "API documentation",
+  search_type: "hybrid",
+  filters: {
+    must: [
+      {
+        field: "tag_set",
+        match_any: ["api", "reference"],
+      },
+      {
+        field: "metadata.version",
+        match_any: ["v2.0"],
+      },
+    ],
+    must_not: [
+      {
+        field: "metadata.deprecated",
+        match_any: ["true"],
+      },
+    ],
+  },
+});
+```
+
+## Error Handling
+
+Handle API errors gracefully:
+
+```typescript
+try {
+  const results = await trieve.search({
+    query: "example query",
+    search_type: "hybrid",
+  });
+} catch (error) {
+  if (error.status === 401) {
+    console.error("Invalid API key");
+  } else if (error.status === 404) {
+    console.error("Dataset not found");
+  } else {
+    console.error("Search failed:", error.message);
+  }
+}
+```
+
+## TypeScript Support
+
+The SDK is fully typed with TypeScript. Import types for better development experience:
+
+```typescript
+import type {
+  SearchChunksReqPayload,
+  SearchResponseBody,
+  ChunkMetadata,
+  AutocompleteReqPayload,
+} from "trieve-ts-sdk";
+
+const searchParams: SearchChunksReqPayload = {
+  query: "example",
+  search_type: "semantic",
+  page_size: 20,
+};
+```
+
+## API Reference
+
+For complete API documentation, visit [ts-sdk.trieve.ai](https://ts-sdk.trieve.ai).
+
+## Support
+
+- [GitHub Repository](https://github.com/devflowinc/trieve/tree/main/clients/ts-sdk)
+- [Discord Community](https://discord.gg/eBJXXZDB8z)
+- [API Documentation](/api-reference)

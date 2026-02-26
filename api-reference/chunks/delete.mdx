@@ -1,0 +1,195 @@
+---
+title: "Delete Chunk"
+description: "Delete a chunk by its id or tracking_id. You can also bulk delete chunks using a filter."
+---
+
+<RequestExample>
+```bash cURL (by ID)
+curl -X DELETE https://api.trieve.ai/api/chunk/d290f1ee-6c54-4b01-90e6-d701748f0851 \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID"
+```
+
+```bash cURL (by Tracking ID)
+curl -X DELETE https://api.trieve.ai/api/chunk/tracking_id/my-tracking-id \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID"
+```
+
+```bash cURL (Bulk Delete)
+curl -X DELETE https://api.trieve.ai/api/chunk \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filter": {
+      "must": [
+        {
+          "field": "tag_set",
+          "match": ["deprecated"]
+        }
+      ]
+    }
+  }'
+```
+
+```typescript TypeScript SDK (by ID)
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+await trieve.deleteChunk({
+  chunkId: "d290f1ee-6c54-4b01-90e6-d701748f0851"
+});
+```
+
+```typescript TypeScript SDK (by Tracking ID)
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+await trieve.deleteChunkByTrackingId({
+  trackingId: "my-tracking-id"
+});
+```
+
+```python Python SDK (by ID)
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="YOUR_API_KEY",
+  dataset_id="YOUR_DATASET_ID"
+)
+
+trieve.delete_chunk(
+  chunk_id="d290f1ee-6c54-4b01-90e6-d701748f0851"
+)
+```
+
+```python Python SDK (by Tracking ID)
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="YOUR_API_KEY",
+  dataset_id="YOUR_DATASET_ID"
+)
+
+trieve.delete_chunk_by_tracking_id(
+  tracking_id="my-tracking-id"
+)
+```
+</RequestExample>
+
+## Method and Path
+
+<CodeGroup>
+```http Delete by ID
+DELETE /api/chunk/{chunk_id}
+```
+
+```http Delete by Tracking ID
+DELETE /api/chunk/tracking_id/{tracking_id}
+```
+
+```http Bulk Delete
+DELETE /api/chunk
+```
+</CodeGroup>
+
+## Authentication
+
+Requires API key with **admin** role for the specified dataset's organization.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+## Path Parameters
+
+### Delete by ID
+
+<ParamField path="chunk_id" type="string" required>
+  Id of the chunk you want to delete.
+</ParamField>
+
+### Delete by Tracking ID
+
+<ParamField path="tracking_id" type="string" required>
+  tracking_id of the chunk you want to delete.
+</ParamField>
+
+## Request Body (Bulk Delete Only)
+
+<ParamField body="filter" type="object" required>
+  Filter to apply to the chunks to delete. This uses the same filter structure as search endpoints.
+  <Expandable title="Filter Structure">
+    <ParamField body="must" type="array" optional>
+      All conditions in this array must be met
+    </ParamField>
+    <ParamField body="should" type="array" optional>
+      At least one condition in this array must be met
+    </ParamField>
+    <ParamField body="must_not" type="array" optional>
+      None of the conditions in this array can be met
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Filter Condition Examples
+
+```json Match Tag
+{
+  "field": "tag_set",
+  "match": ["tag1", "tag2"]
+}
+```
+
+```json Match Metadata
+{
+  "field": "metadata.key",
+  "match": "value"
+}
+```
+
+```json Date Range
+{
+  "field": "time_stamp",
+  "range": {
+    "gte": "2021-01-01",
+    "lte": "2021-12-31"
+  }
+}
+```
+
+## Response
+
+Returns a 204 No Content response on success.
+
+## Status Codes
+
+<ResponseField name="204" type="Success">
+  Chunk(s) successfully deleted
+</ResponseField>
+
+<ResponseField name="400" type="Error">
+  Service error relating to finding or deleting the chunk(s)
+</ResponseField>
+
+## Notes
+
+- When deleting by ID or tracking_id, the chunk is immediately marked for deletion
+- Bulk delete operations are queued and processed asynchronously
+- Deleted chunks cannot be recovered
+- When using bulk delete, ensure your filter is correct as this operation affects multiple chunks

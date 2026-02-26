@@ -1,0 +1,155 @@
+---
+title: "List Organization Users"
+description: "Fetch all users belonging to an organization"
+---
+
+## Endpoint
+
+<ParamField path="method" type="string" required>
+  GET
+</ParamField>
+
+<ParamField path="url" type="string" required>
+  /api/organization/users/{organization_id}
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="organization_id" type="string" required>
+  The id of the organization you want to fetch the users of.
+</ParamField>
+
+## Headers
+
+<ParamField header="TR-Organization" type="string" required>
+  The organization id to use for the request
+</ParamField>
+
+## Response
+
+Returns an array of user objects.
+
+<ResponseField name="id" type="string">
+  Unique identifier of the user
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Email address of the user
+</ResponseField>
+
+<ResponseField name="name" type="string" optional>
+  Name of the user
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the user was created
+</ResponseField>
+
+<ResponseField name="user_orgs" type="array">
+  Array of user-organization relationships, including roles
+  
+  <Expandable title="user_orgs properties">
+    <ResponseField name="user_id" type="string">
+      The user's unique identifier
+    </ResponseField>
+    
+    <ResponseField name="organization_id" type="string">
+      The organization's unique identifier
+    </ResponseField>
+    
+    <ResponseField name="role" type="integer">
+      The user's role in the organization (0 = read, 1 = admin, 2 = owner)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="orgs" type="array">
+  Array of organization objects the user belongs to
+  
+  <Expandable title="orgs properties">
+    <ResponseField name="id" type="string">
+      Organization unique identifier
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Organization name
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string">
+      Organization creation timestamp
+    </ResponseField>
+    
+    <ResponseField name="updated_at" type="string">
+      Organization last update timestamp
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X GET "https://api.trieve.ai/api/organization/users/e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "TR-Organization: e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "<your-api-key>",
+  organizationId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+const users = await trieve.getOrganizationUsers({
+  organizationId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+console.log("Organization users:", users);
+users.forEach(user => {
+  console.log(`${user.name} (${user.email}) - Role: ${user.user_orgs[0].role}`);
+});
+```
+
+```python Python
+import requests
+
+organization_id = "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+
+response = requests.get(
+    f"https://api.trieve.ai/api/organization/users/{organization_id}",
+    headers={
+        "Authorization": "Bearer <your-api-key>",
+        "TR-Organization": organization_id
+    }
+)
+
+users = response.json()
+print(f"Found {len(users)} users in organization")
+for user in users:
+    role = user["user_orgs"][0]["role"]
+    role_name = {0: "read", 1: "admin", 2: "owner"}.get(role, "unknown")
+    print(f"{user['name']} ({user['email']}) - Role: {role_name}")
+```
+
+</CodeGroup>
+
+## Authentication
+
+Requires authentication with an API key that has at least `admin` role for the specified organization.
+
+## Notes
+
+- This endpoint returns all users who have access to the organization
+- The `user_orgs` array contains the user's role within each organization
+- Roles are represented as integers:
+  - `0` = Read-only access
+  - `1` = Admin access
+  - `2` = Owner access
+- Users may belong to multiple organizations
+
+## Error Responses
+
+- `400`: Service error relating to finding the organization's users by id

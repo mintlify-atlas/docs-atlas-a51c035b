@@ -1,0 +1,255 @@
+---
+title: 'Get CTR Analytics'
+openapi: 'POST /api/analytics/events/ctr'
+---
+
+This endpoint allows you to view Click-Through Rate (CTR) analytics for your dataset. CTR analytics help you understand how users interact with search results and recommendations by tracking which items are clicked.
+
+## Authentication
+
+Requires an API key with `admin` role.
+
+## Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key in the format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Request Body
+
+The request body accepts a `CTRAnalytics` object with one of the following types:
+
+### Search CTR Metrics
+
+<ParamField body="type" type="string" required>
+  Set to `search_ctr_metrics` to get search CTR metrics.
+</ParamField>
+
+<ParamField body="filter" type="SearchAnalyticsFilter">
+  Optional filter to narrow down the analytics data by date range, search terms, or other criteria.
+</ParamField>
+
+### Searches with Clicks
+
+<ParamField body="type" type="string" required>
+  Set to `searches_with_clicks` to retrieve searches that resulted in clicks.
+</ParamField>
+
+<ParamField body="filter" type="SearchAnalyticsFilter">
+  Optional filter to narrow down the results.
+</ParamField>
+
+<ParamField body="page" type="integer">
+  Page number for pagination (0-indexed).
+</ParamField>
+
+### Searches without Clicks
+
+<ParamField body="type" type="string" required>
+  Set to `searches_without_clicks` to retrieve searches that did not result in clicks.
+</ParamField>
+
+<ParamField body="filter" type="SearchAnalyticsFilter">
+  Optional filter to narrow down the results.
+</ParamField>
+
+<ParamField body="page" type="integer">
+  Page number for pagination (0-indexed).
+</ParamField>
+
+### Recommendation CTR Metrics
+
+<ParamField body="type" type="string" required>
+  Set to `recommendation_ctr_metrics` to get recommendation CTR metrics.
+</ParamField>
+
+<ParamField body="filter" type="RecommendationAnalyticsFilter">
+  Optional filter for recommendation analytics.
+</ParamField>
+
+### Recommendations with/without Clicks
+
+Similar to search queries, you can use `recommendations_with_clicks` and `recommendations_without_clicks` types.
+
+## Response
+
+<ResponseField name="SearchCTRMetrics" type="object">
+  Contains overall CTR metrics including average CTR, click counts, and impression counts.
+  
+  <ResponseField name="avg_ctr" type="number">
+    Average click-through rate as a percentage.
+  </ResponseField>
+  
+  <ResponseField name="total_clicks" type="integer">
+    Total number of clicks.
+  </ResponseField>
+  
+  <ResponseField name="total_impressions" type="integer">
+    Total number of impressions.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="SearchesWithClicks" type="object">
+  List of search queries that resulted in clicks.
+  
+  <ResponseField name="queries" type="array">
+    Array of query objects with click information.
+    
+    <ResponseField name="query" type="string">
+      The search query text.
+    </ResponseField>
+    
+    <ResponseField name="click_count" type="integer">
+      Number of clicks for this query.
+    </ResponseField>
+    
+    <ResponseField name="ctr" type="number">
+      Click-through rate for this query.
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash Get Search CTR Metrics
+curl -X POST https://api.trieve.ai/api/analytics/events/ctr \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "search_ctr_metrics",
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z",
+        "lt": "2024-12-31T23:59:59Z"
+      }
+    }
+  }'
+```
+
+```typescript Get Searches with Clicks
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const searchesWithClicks = await trieve.analytics.getCTRAnalytics({
+  type: "searches_with_clicks",
+  filter: {
+    date_range: {
+      gt: "2024-01-01T00:00:00Z"
+    }
+  },
+  page: 0
+});
+
+console.log(searchesWithClicks);
+```
+
+```python Get Searches without Clicks
+import requests
+
+url = "https://api.trieve.ai/api/analytics/events/ctr"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "TR-Dataset": "YOUR_DATASET_ID",
+    "Content-Type": "application/json"
+}
+data = {
+    "type": "searches_without_clicks",
+    "filter": {
+        "date_range": {
+            "gt": "2024-01-01T00:00:00Z"
+        }
+    },
+    "page": 0
+}
+
+response = requests.post(url, json=data, headers=headers)
+result = response.json()
+
+for query in result["queries"]:
+    print(f"Query: {query['query']} - Impressions: {query['impression_count']}")
+```
+
+```bash Get Recommendation CTR Metrics
+curl -X POST https://api.trieve.ai/api/analytics/events/ctr \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "recommendation_ctr_metrics",
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    }
+  }'
+```
+
+</CodeGroup>
+
+## Response Examples
+
+### Search CTR Metrics Response
+
+```json
+{
+  "avg_ctr": 0.15,
+  "total_clicks": 1500,
+  "total_impressions": 10000,
+  "unique_searches": 850
+}
+```
+
+### Searches with Clicks Response
+
+```json
+{
+  "queries": [
+    {
+      "query": "machine learning",
+      "click_count": 45,
+      "impression_count": 200,
+      "ctr": 0.225,
+      "request_id": "123e4567-e89b-12d3-a456-426614174000"
+    },
+    {
+      "query": "neural networks",
+      "click_count": 32,
+      "impression_count": 150,
+      "ctr": 0.213,
+      "request_id": "987f6543-e21a-45b6-c789-123456789abc"
+    }
+  ]
+}
+```
+
+## Use Cases
+
+- **Optimize Search Results**: Identify queries with low CTR to improve result relevance
+- **A/B Testing**: Compare CTR metrics across different search configurations
+- **User Engagement Analysis**: Understand which search results drive the most engagement
+- **Content Strategy**: Discover which queries generate clicks to inform content creation
+- **Performance Monitoring**: Track CTR trends over time to measure improvements
+
+## Best Practices
+
+1. **Regular Monitoring**: Check CTR metrics weekly to identify trends
+2. **Focus on Low CTR Queries**: Investigate queries with impressions but no clicks
+3. **Segment Analysis**: Use filters to analyze CTR by time period or user segment
+4. **Combine with Other Metrics**: Use CTR alongside search quality metrics for complete insights
+
+## Related Endpoints
+
+- [Get Analytics](/api-reference/analytics/get) - General analytics endpoint
+- [Get Search Analytics Queries](/api-reference/analytics/queries) - Detailed query analytics
+- [Get Events](/api-reference/events/get) - Track click events

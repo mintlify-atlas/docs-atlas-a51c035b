@@ -1,0 +1,131 @@
+---
+title: 'Create Topic'
+api: 'POST /api/topic'
+description: 'Create a new chat topic for RAG conversation management'
+---
+
+Topics are attached to owner_ids and act as coordinators for conversation message history of gen-AI chat sessions. This endpoint creates a new topic that can be used to organize chat messages.
+
+## Request
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField body="owner_id" type="string" required>
+  The owner_id of the topic. This is typically a browser fingerprint or your user's id. It is used to group topics together for a user.
+</ParamField>
+
+<ParamField body="name" type="string">
+  The name of the topic. If this is not provided, the topic name is generated from the first_user_message.
+</ParamField>
+
+<ParamField body="first_user_message" type="string">
+  The first message which will belong to the topic. The topic name is generated based on this message similar to how it works in the OpenAI chat UX if a name is not explicitly provided on the name request body key.
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Metadata is any metadata you want to associate with the event that is created from this request.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The unique identifier for the created topic.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the topic.
+</ResponseField>
+
+<ResponseField name="owner_id" type="string">
+  The owner_id associated with this topic.
+</ResponseField>
+
+<ResponseField name="dataset_id" type="string">
+  The dataset this topic belongs to.
+</ResponseField>
+
+<ResponseField name="deleted" type="boolean">
+  Whether the topic is deleted.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the topic was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp when the topic was last updated.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/topic" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "owner_id": "user-12345",
+    "name": "My First Conversation",
+    "first_user_message": "Hello, how can you help me today?"
+  }'
+```
+
+```typescript TypeScript
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID",
+});
+
+const topic = await trieve.createTopic({
+  owner_id: "user-12345",
+  name: "My First Conversation",
+  first_user_message: "Hello, how can you help me today?",
+});
+
+console.log(topic);
+```
+
+```python Python
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    dataset_id="YOUR_DATASET_ID"
+)
+
+topic = trieve.create_topic(
+    owner_id="user-12345",
+    name="My First Conversation",
+    first_user_message="Hello, how can you help me today?"
+)
+
+print(topic)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200
+{
+  "id": "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  "name": "My First Conversation",
+  "owner_id": "user-12345",
+  "dataset_id": "d1d1d1d1-d1d1-d1d1-d1d1-d1d1d1d1d1d1",
+  "deleted": false,
+  "created_at": "2021-01-01T00:00:00.000Z",
+  "updated_at": "2021-01-01T00:00:00.000Z"
+}
+```
+
+```json 400
+{
+  "message": "first_user_message and name must not be empty"
+}
+```
+
+</ResponseExample>

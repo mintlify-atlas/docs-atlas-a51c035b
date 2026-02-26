@@ -1,0 +1,534 @@
+---
+title: Topics
+description: Manage conversation topics and chat session history
+---
+
+## Overview
+
+Topics are containers for conversation history in Trieve's RAG system. Each topic represents a distinct chat session with its own message history, similar to conversation threads in ChatGPT.
+
+### Key Features
+
+- **Owner-based organization** - Group topics by user ID or browser fingerprint
+- **Automatic naming** - Generate topic names from first message
+- **Message history** - Store complete conversation context
+- **Topic cloning** - Duplicate topics to create conversation branches
+
+## Creating Topics
+
+Create a new topic with automatic name generation:
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch('https://api.trieve.ai/api/topic', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    owner_id: 'user-123',
+    first_user_message: 'How do I integrate Trieve into my app?'
+  })
+});
+
+const topic = await response.json();
+console.log(topic.id, topic.name);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.trieve.ai/api/topic',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'owner_id': 'user-123',
+        'first_user_message': 'How do I integrate Trieve into my app?'
+    }
+)
+
+topic = response.json()
+print(f"Topic created: {topic['id']}, {topic['name']}")
+```
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/topic \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "owner_id": "user-123",
+    "first_user_message": "How do I integrate Trieve into my app?"
+  }'
+```
+</CodeGroup>
+
+### Topic Creation Parameters
+
+From `server/src/handlers/topic_handler.rs:21-31`:
+
+<ParamField path="owner_id" type="string" required>
+  Identifier for the topic owner. Typically a user ID, browser fingerprint, or session ID. Used to group topics together.
+</ParamField>
+
+<ParamField path="first_user_message" type="string">
+  The opening message for the conversation. When provided, the topic name is generated using the LLM based on this message.
+</ParamField>
+
+<ParamField path="name" type="string">
+  Explicit name for the topic. If provided, this is used instead of generating a name from `first_user_message`.
+</ParamField>
+
+<ParamField path="metadata" type="object">
+  Custom metadata to associate with the topic creation event for analytics tracking.
+</ParamField>
+
+<Note>
+At least one of `first_user_message` or `name` must be provided. If both are provided, `name` takes precedence.
+</Note>
+
+## Topic Structure
+
+From `server/src/data/models.rs:126-161`, each topic includes:
+
+```json
+{
+  "id": "topic-uuid",
+  "name": "Trieve Integration Guide",
+  "owner_id": "user-123",
+  "dataset_id": "dataset-uuid",
+  "deleted": false,
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z"
+}
+```
+
+## Retrieving Topics
+
+### Get All Topics for an Owner
+
+Retrieve all topics belonging to a specific user:
+
+<CodeGroup>
+```typescript TypeScript
+const ownerId = 'user-123';
+const response = await fetch(
+  `https://api.trieve.ai/api/topic/owner/${ownerId}`,
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_API_KEY',
+      'TR-Dataset': 'YOUR_DATASET_ID'
+    }
+  }
+);
+
+const topics = await response.json();
+// Sort by most recent
+topics.sort((a, b) => 
+  new Date(b.updated_at) - new Date(a.updated_at)
+);
+```
+
+```python Python
+owner_id = 'user-123'
+response = requests.get(
+    f'https://api.trieve.ai/api/topic/owner/{owner_id}',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    }
+)
+
+topics = response.json()
+# Sort by most recent
+topics.sort(key=lambda x: x['updated_at'], reverse=True)
+```
+</CodeGroup>
+
+See `server/src/handlers/topic_handler.rs:260-294` for implementation.
+
+## Updating Topics
+
+Rename an existing topic:
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch('https://api.trieve.ai/api/topic', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    topic_id: 'topic-uuid',
+    name: 'Updated Topic Name'
+  })
+});
+
+if (response.status === 204) {
+  console.log('Topic updated successfully');
+}
+```
+
+```python Python
+response = requests.put(
+    'https://api.trieve.ai/api/topic',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'topic_id': 'topic-uuid',
+        'name': 'Updated Topic Name'
+    }
+)
+
+if response.status_code == 204:
+    print('Topic updated successfully')
+```
+</CodeGroup>
+
+See `server/src/handlers/topic_handler.rs:221-258` for implementation.
+
+<Warning>
+Topic names cannot be empty. The request will fail with a 400 error if an empty name is provided.
+</Warning>
+
+## Deleting Topics
+
+Delete a topic and all its associated messages:
+
+<CodeGroup>
+```typescript TypeScript
+const topicId = 'topic-uuid';
+const response = await fetch(
+  `https://api.trieve.ai/api/topic/${topicId}`,
+  {
+    method: 'DELETE',
+    headers: {
+      'Authorization': 'Bearer YOUR_API_KEY',
+      'TR-Dataset': 'YOUR_DATASET_ID'
+    }
+  }
+);
+
+if (response.status === 204) {
+  console.log('Topic deleted successfully');
+}
+```
+
+```python Python
+topic_id = 'topic-uuid'
+response = requests.delete(
+    f'https://api.trieve.ai/api/topic/{topic_id}',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    }
+)
+
+if response.status_code == 204:
+    print('Topic deleted successfully')
+```
+</CodeGroup>
+
+See `server/src/handlers/topic_handler.rs:180-211` for implementation.
+
+<Warning>
+Deleting a topic is permanent and will delete all associated messages. This action cannot be undone.
+</Warning>
+
+## Cloning Topics
+
+Create a copy of an existing topic with all its messages:
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch('https://api.trieve.ai/api/topic/clone', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    topic_id: 'original-topic-uuid',
+    owner_id: 'user-456',  // Can assign to different owner
+    name: 'Cloned Conversation'  // Optional new name
+  })
+});
+
+const clonedTopic = await response.json();
+```
+
+```python Python
+response = requests.post(
+    'https://api.trieve.ai/api/topic/clone',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'topic_id': 'original-topic-uuid',
+        'owner_id': 'user-456',
+        'name': 'Cloned Conversation'
+    }
+)
+
+cloned_topic = response.json()
+```
+</CodeGroup>
+
+See `server/src/handlers/topic_handler.rs:123-172` for implementation.
+
+### Clone Parameters
+
+<ParamField path="topic_id" type="uuid" required>
+  The ID of the topic to clone from
+</ParamField>
+
+<ParamField path="owner_id" type="string" required>
+  Owner ID for the new topic. Can be the same or different from the original.
+</ParamField>
+
+<ParamField path="name" type="string">
+  Name for the cloned topic. If not provided, uses the same name as the original.
+</ParamField>
+
+<Tip>
+Use topic cloning to create conversation branches or share conversation templates across users.
+</Tip>
+
+## Best Practices
+
+### Owner ID Strategy
+
+<AccordionGroup>
+  <Accordion title="Authenticated Users">
+    Use your application's user ID as the `owner_id`. This ensures topics persist across sessions and devices.
+    
+    ```typescript
+    const ownerId = currentUser.id;
+    ```
+  </Accordion>
+  
+  <Accordion title="Anonymous Users">
+    Use a browser fingerprint or session ID for anonymous users. Consider migrating topics when users sign up.
+    
+    ```typescript
+    import FingerprintJS from '@fingerprintjs/fingerprintjs';
+    
+    const fp = await FingerprintJS.load();
+    const result = await fp.get();
+    const ownerId = result.visitorId;
+    ```
+  </Accordion>
+  
+  <Accordion title="Multi-tenant Applications">
+    Prefix owner IDs with tenant identifiers to ensure isolation.
+    
+    ```typescript
+    const ownerId = `${tenantId}:${userId}`;
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Topic Naming
+
+<Card title="Automatic Naming" icon="sparkles">
+  Let Trieve generate topic names from the first message. The LLM creates concise, descriptive names:
+  
+  ```json
+  {
+    "first_user_message": "How do I implement authentication in my React app?"
+  }
+  // Generated name: "React Authentication Implementation"
+  ```
+</Card>
+
+<Card title="Manual Naming" icon="pencil">
+  Provide explicit names for specific use cases like templates or predefined workflows:
+  
+  ```json
+  {
+    "name": "Customer Support Session",
+    "owner_id": "support-bot-v1"
+  }
+  ```
+</Card>
+
+### Topic Lifecycle Management
+
+```typescript
+// Create topic when chat starts
+const createTopic = async (userId: string, firstMessage: string) => {
+  const response = await fetch('https://api.trieve.ai/api/topic', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'TR-Dataset': datasetId,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      owner_id: userId,
+      first_user_message: firstMessage,
+      metadata: {
+        created_from: 'web-app',
+        user_agent: navigator.userAgent
+      }
+    })
+  });
+  return response.json();
+};
+
+// List topics for user dashboard
+const getUserTopics = async (userId: string) => {
+  const response = await fetch(
+    `https://api.trieve.ai/api/topic/owner/${userId}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'TR-Dataset': datasetId
+      }
+    }
+  );
+  const topics = await response.json();
+  
+  // Filter out old topics (optional)
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 30);
+  
+  return topics.filter(t => 
+    new Date(t.updated_at) > cutoffDate
+  );
+};
+
+// Clean up old topics
+const deleteOldTopics = async (userId: string, daysOld: number = 90) => {
+  const topics = await getUserTopics(userId);
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - daysOld);
+  
+  for (const topic of topics) {
+    if (new Date(topic.updated_at) < cutoff) {
+      await fetch(`https://api.trieve.ai/api/topic/${topic.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'TR-Dataset': datasetId
+        }
+      });
+    }
+  }
+};
+```
+
+## Common Patterns
+
+### User Chat Dashboard
+
+```typescript
+interface ChatDashboardProps {
+  userId: string;
+}
+
+const ChatDashboard = ({ userId }: ChatDashboardProps) => {
+  const [topics, setTopics] = useState([]);
+  
+  useEffect(() => {
+    fetch(`https://api.trieve.ai/api/topic/owner/${userId}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'TR-Dataset': datasetId
+      }
+    })
+    .then(res => res.json())
+    .then(data => {
+      // Sort by most recent first
+      data.sort((a, b) => 
+        new Date(b.updated_at) - new Date(a.updated_at)
+      );
+      setTopics(data);
+    });
+  }, [userId]);
+  
+  return (
+    <div>
+      <h2>Your Conversations</h2>
+      {topics.map(topic => (
+        <div key={topic.id}>
+          <h3>{topic.name}</h3>
+          <p>Last updated: {new Date(topic.updated_at).toLocaleString()}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+```
+
+### Branch Conversations
+
+```typescript
+const branchConversation = async (
+  originalTopicId: string,
+  userId: string,
+  branchPoint: string
+) => {
+  // Clone the original topic
+  const response = await fetch('https://api.trieve.ai/api/topic/clone', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'TR-Dataset': datasetId,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      topic_id: originalTopicId,
+      owner_id: userId,
+      name: `Branch: ${branchPoint}`
+    })
+  });
+  
+  return response.json();
+};
+```
+
+## Analytics & Metadata
+
+Track topic creation with custom metadata:
+
+```typescript
+const createTrackedTopic = async (userId: string, source: string) => {
+  const response = await fetch('https://api.trieve.ai/api/topic', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'TR-Dataset': datasetId,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      owner_id: userId,
+      first_user_message: 'Hello!',
+      metadata: {
+        source: source,  // 'mobile-app', 'web', 'api'
+        platform: navigator.platform,
+        referrer: document.referrer,
+        campaign: new URLSearchParams(location.search).get('utm_campaign')
+      }
+    })
+  });
+  return response.json();
+};
+```
+
+## Related Resources
+
+- [Messages](/rag/messages) - Send messages within topics
+- [Streaming](/rag/streaming) - Handle real-time responses
+- [API Reference: Topics](/api-reference/topics/create) - Full API documentation

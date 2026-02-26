@@ -1,80 +1,430 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get from zero to your first working search in minutes"
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This quickstart will guide you through setting up Trieve and making your first search request. You'll create a dataset, upload some content, and perform a search query.
 
-### Step 1: Set up your local environment
+<Info>
+  **Time to complete**: ~5 minutes
+</Info>
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## Prerequisites
 
-### Step 2: Deploy your changes
+- A Trieve account ([sign up free](https://dashboard.trieve.ai))
+- Node.js 16+ installed (for TypeScript SDK examples)
+- Basic familiarity with REST APIs or TypeScript
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+## Step 1: Create an Organization and Dataset
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+<Steps>
+  <Step title="Sign up for Trieve">
+    Navigate to [dashboard.trieve.ai](https://dashboard.trieve.ai) and create your account. You'll start with 1,000 free chunks.
+  </Step>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+  <Step title="Create your first dataset">
+    After signing in, create a new dataset from the dashboard. This will give you:
+    - A **Dataset ID** (UUID format)
+    - An **Organization ID** (UUID format)
+  </Step>
 
-### Step 3: Go live
+  <Step title="Generate an API key">
+    Navigate to your organization settings and create an API key:
+    - Give it a descriptive name (e.g., "Development Key")
+    - Set the role to **Admin** for full access
+    - Copy and save the API key securely (you won't see it again)
+  </Step>
+</Steps>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Warning>
+  Store your API key securely! It provides full access to your Trieve organization.
+</Warning>
 
-## Next steps
+## Step 2: Install the SDK
 
-Now that you have your docs running, explore these key features:
+Choose your preferred language:
 
-<CardGroup cols={2}>
+<Tabs>
+  <Tab title="TypeScript">
+    ```bash
+    npm install trieve-ts-sdk
+    # or
+    yarn add trieve-ts-sdk
+    # or
+    pnpm install trieve-ts-sdk
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```bash
+    pip install trieve-py-client
+    ```
+  </Tab>
+  <Tab title="cURL">
+    No installation needed! Use cURL directly from your terminal.
+  </Tab>
+</Tabs>
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+## Step 3: Initialize the Client
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+<CodeGroup>
+```typescript TypeScript
+import { TrieveSDK } from "trieve-ts-sdk";
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "your-dataset-id-here",
+});
+```
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+```python Python
+import trieve_py_client
+from trieve_py_client.rest import ApiException
 
-</CardGroup>
+configuration = trieve_py_client.Configuration(
+    host = "https://api.trieve.ai"
+)
+
+# Configure API key authorization
+configuration.api_key['ApiKey'] = 'tr-********************************'
+
+api_client = trieve_py_client.ApiClient(configuration)
+```
+
+```bash cURL
+# Set your credentials as environment variables
+export TRIEVE_API_KEY="tr-********************************"
+export TRIEVE_DATASET_ID="your-dataset-id-here"
+```
+</CodeGroup>
+
+## Step 4: Upload Your First Chunk
+
+A "chunk" is a piece of searchable content in Trieve. Let's upload some sample data:
+
+<CodeGroup>
+```typescript TypeScript
+const chunk = await trieve.createChunk({
+  chunk_html: "<p>Trieve is an all-in-one infrastructure for search, recommendations, and RAG. It combines semantic search, full-text search, and recommendations into a single API.</p>",
+  link: "https://trieve.ai",
+  metadata: {
+    title: "What is Trieve?",
+    category: "introduction",
+  },
+  tracking_id: "trieve-intro-001",
+});
+
+console.log("Chunk created:", chunk);
+```
+
+```python Python
+chunk_api = trieve_py_client.ChunkApi(api_client)
+
+chunk_data = trieve_py_client.CreateChunkReqPayloadEnum(
+    chunk_html="<p>Trieve is an all-in-one infrastructure for search, recommendations, and RAG. It combines semantic search, full-text search, and recommendations into a single API.</p>",
+    link="https://trieve.ai",
+    metadata={
+        "title": "What is Trieve?",
+        "category": "introduction",
+    },
+    tracking_id="trieve-intro-001"
+)
+
+try:
+    chunk = chunk_api.create_chunk(
+        chunk_data,
+        tr_dataset="your-dataset-id-here"
+    )
+    print("Chunk created:", chunk)
+except ApiException as e:
+    print("Exception:", e)
+```
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/chunk" \
+  -H "Authorization: Bearer $TRIEVE_API_KEY" \
+  -H "TR-Dataset: $TRIEVE_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chunk_html": "<p>Trieve is an all-in-one infrastructure for search, recommendations, and RAG. It combines semantic search, full-text search, and recommendations into a single API.</p>",
+    "link": "https://trieve.ai",
+    "metadata": {
+      "title": "What is Trieve?",
+      "category": "introduction"
+    },
+    "tracking_id": "trieve-intro-001"
+  }'
+```
+</CodeGroup>
+
+<Tip>
+  **Tracking IDs** are optional but recommended. They let you reference chunks using your own identifiers from external systems.
+</Tip>
+
+## Step 5: Upload More Content
+
+Let's add a few more chunks to make search more interesting:
+
+<CodeGroup>
+```typescript TypeScript
+const chunks = [
+  {
+    chunk_html: "<p>Semantic search uses dense vector embeddings to find conceptually similar content, even when exact keywords don't match.</p>",
+    metadata: { title: "Semantic Search", category: "features" },
+    tracking_id: "semantic-search-001",
+  },
+  {
+    chunk_html: "<p>Full-text search with SPLADE provides typo-tolerant neural search that understands synonyms and variations.</p>",
+    metadata: { title: "Full-Text Search", category: "features" },
+    tracking_id: "fulltext-search-001",
+  },
+  {
+    chunk_html: "<p>Hybrid search combines semantic and full-text approaches, then uses cross-encoder re-ranking for the best results.</p>",
+    metadata: { title: "Hybrid Search", category: "features" },
+    tracking_id: "hybrid-search-001",
+  },
+];
+
+// Upload in bulk (up to 120 chunks at once)
+for (const chunkData of chunks) {
+  await trieve.createChunk(chunkData);
+}
+
+console.log("All chunks uploaded!");
+```
+
+```python Python
+chunks = [
+    {
+        "chunk_html": "<p>Semantic search uses dense vector embeddings to find conceptually similar content, even when exact keywords don't match.</p>",
+        "metadata": {"title": "Semantic Search", "category": "features"},
+        "tracking_id": "semantic-search-001",
+    },
+    {
+        "chunk_html": "<p>Full-text search with SPLADE provides typo-tolerant neural search that understands synonyms and variations.</p>",
+        "metadata": {"title": "Full-Text Search", "category": "features"},
+        "tracking_id": "fulltext-search-001",
+    },
+    {
+        "chunk_html": "<p>Hybrid search combines semantic and full-text approaches, then uses cross-encoder re-ranking for the best results.</p>",
+        "metadata": {"title": "Hybrid Search", "category": "features"},
+        "tracking_id": "hybrid-search-001",
+    },
+]
+
+for chunk_data in chunks:
+    try:
+        chunk_api.create_chunk(
+            trieve_py_client.CreateChunkReqPayloadEnum(**chunk_data),
+            tr_dataset="your-dataset-id-here"
+        )
+    except ApiException as e:
+        print(f"Exception: {e}")
+
+print("All chunks uploaded!")
+```
+
+```bash cURL
+# Upload additional chunks with the same pattern
+curl -X POST "https://api.trieve.ai/api/chunk" \
+  -H "Authorization: Bearer $TRIEVE_API_KEY" \
+  -H "TR-Dataset: $TRIEVE_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chunk_html": "<p>Semantic search uses dense vector embeddings to find conceptually similar content, even when exact keywords don't match.</p>",
+    "metadata": {"title": "Semantic Search", "category": "features"},
+    "tracking_id": "semantic-search-001"
+  }'
+```
+</CodeGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Wait a few seconds after uploading for the chunks to be indexed before searching.
 </Note>
+
+## Step 6: Perform Your First Search
+
+Now let's search for content using different search types:
+
+<CodeGroup>
+```typescript TypeScript
+// Hybrid search (recommended for best results)
+const results = await trieve.search({
+  query: "How does Trieve search work?",
+  search_type: "hybrid",
+  page_size: 10,
+  highlight_options: {
+    highlight_delimiters: ["<mark>", "</mark>"],
+  },
+});
+
+console.log("Search results:", results);
+
+// Print formatted results
+results.chunks.forEach((chunk, index) => {
+  console.log(`\n${index + 1}. ${chunk.metadata?.title || 'Untitled'}`);
+  console.log(`   Score: ${chunk.score}`);
+  console.log(`   Content: ${chunk.chunk_html}`);
+});
+```
+
+```python Python
+search_api = trieve_py_client.ChunkApi(api_client)
+
+search_data = trieve_py_client.SearchChunksReqPayload(
+    query="How does Trieve search work?",
+    search_type="hybrid",
+    page_size=10,
+    highlight_options={
+        "highlight_delimiters": ["<mark>", "</mark>"]
+    }
+)
+
+try:
+    results = search_api.search_chunks(
+        search_data,
+        tr_dataset="your-dataset-id-here",
+        x_api_version="V2"
+    )
+    
+    for i, chunk in enumerate(results.chunks):
+        print(f"\n{i + 1}. {chunk.metadata.get('title', 'Untitled')}")
+        print(f"   Score: {chunk.score}")
+        print(f"   Content: {chunk.chunk_html}")
+except ApiException as e:
+    print(f"Exception: {e}")
+```
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/chunk/search" \
+  -H "Authorization: Bearer $TRIEVE_API_KEY" \
+  -H "TR-Dataset: $TRIEVE_DATASET_ID" \
+  -H "X-API-VERSION: V2" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How does Trieve search work?",
+    "search_type": "hybrid",
+    "page_size": 10,
+    "highlight_options": {
+      "highlight_delimiters": ["<mark>", "</mark>"]
+    }
+  }'
+```
+</CodeGroup>
+
+### Try Different Search Types
+
+<Tabs>
+  <Tab title="Hybrid">
+    ```typescript
+    // Best of both worlds: semantic + full-text
+    const results = await trieve.search({
+      query: "vector embeddings",
+      search_type: "hybrid",
+    });
+    ```
+    Combines semantic and full-text search with re-ranking for optimal results.
+  </Tab>
+  <Tab title="Semantic">
+    ```typescript
+    // Conceptual similarity using embeddings
+    const results = await trieve.search({
+      query: "finding similar content",
+      search_type: "semantic",
+    });
+    ```
+    Uses dense vector embeddings to find conceptually related content.
+  </Tab>
+  <Tab title="Full-Text">
+    ```typescript
+    // Keyword-based with typo tolerance
+    const results = await trieve.search({
+      query: "SPLADE neural search",
+      search_type: "fulltext",
+    });
+    ```
+    Neural sparse-vector search with typo tolerance and synonym understanding.
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+Congratulations! You've successfully set up Trieve and performed your first search. Here's what to explore next:
+
+<CardGroup cols={2}>
+  <Card
+    title="Authentication Guide"
+    icon="key"
+    href="/authentication"
+  >
+    Learn about API keys, headers, and security best practices
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api-reference"
+  >
+    Explore all available endpoints and parameters
+  </Card>
+  <Card
+    title="Advanced Search"
+    icon="filter"
+    href="/api-reference/chunks/search"
+  >
+    Use filters, re-ranking, and advanced search options
+  </Card>
+  <Card
+    title="Recommendations"
+    icon="sparkles"
+    href="/search/recommendations"
+  >
+    Build recommendation features based on similarity
+  </Card>
+  <Card
+    title="RAG Integration"
+    icon="messages"
+    href="/api-reference/messages/create"
+  >
+    Add conversational AI with retrieval-augmented generation
+  </Card>
+  <Card
+    title="Self-Hosting"
+    icon="server"
+    href="https://docs.trieve.ai/self-hosting/docker-compose"
+  >
+    Deploy Trieve in your own infrastructure
+  </Card>
+</CardGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="No search results returned" icon="circle-question">
+    - **Wait for indexing**: Chunks need a few seconds to be indexed after upload
+    - **Check your dataset ID**: Ensure you're searching the correct dataset
+    - **Verify chunk upload**: Use the dashboard to confirm chunks were created
+    - **Try different search types**: Semantic vs full-text may yield different results
+  </Accordion>
+
+  <Accordion title="Authentication errors" icon="lock">
+    - **Check your API key**: Ensure it starts with `tr-` and is complete
+    - **Verify headers**: Both `Authorization` and `TR-Dataset` headers are required
+    - **Check permissions**: Your API key needs appropriate role permissions
+    - See the [Authentication guide](/authentication) for details
+  </Accordion>
+
+  <Accordion title="Rate limiting" icon="gauge">
+    - Free tier includes 1,000 chunks and reasonable rate limits
+    - Contact support for higher limits: developers@trieve.ai
+    - Consider batch operations to reduce API calls
+  </Accordion>
+</AccordionGroup>
+
+<Card
+  title="Need Help?"
+  icon="life-ring"
+  href="https://discord.gg/eBJXXZDB8z"
+>
+  Join our Discord community for support and to share what you're building!
+</Card>

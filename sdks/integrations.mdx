@@ -1,0 +1,371 @@
+---
+title: Integrations
+description: Pre-built integrations and adapters for popular frameworks and documentation tools
+---
+
+Trieve provides a comprehensive suite of integrations and adapters to seamlessly add search capabilities to your existing documentation sites, workflows, and applications.
+
+## Search Component
+
+A customizable React search component and web component for adding Trieve search to any website.
+
+### Installation
+
+<CodeGroup>
+
+```bash npm
+npm install trieve-search-component
+```
+
+```bash yarn
+yarn add trieve-search-component
+```
+
+```bash pnpm
+pnpm install trieve-search-component
+```
+
+</CodeGroup>
+
+### React Usage
+
+Add a search modal to your React application:
+
+```jsx
+import { TrieveModalSearch } from "trieve-search-component";
+import "trieve-search-component/styles";
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "your-dataset-id",
+});
+
+function App() {
+  return (
+    <TrieveModalSearch
+      trieve={trieve}
+      theme="dark"
+      placeholder="Search documentation..."
+      defaultSearchQueries={[
+        "How to get started?",
+        "API reference",
+        "Authentication"
+      ]}
+    />
+  );
+}
+```
+
+### Vanilla JavaScript
+
+Use the search component without a framework:
+
+```javascript
+import "trieve-search-component/styles";
+import { renderToDiv } from "trieve-search-component/vanilla";
+
+const root = document.getElementById("search-root");
+renderToDiv(root, {
+  apiKey: "tr-********************************",
+  datasetId: "your-dataset-id",
+  theme: "light",
+  placeholder: "Search...",
+});
+```
+
+### Configuration Options
+
+Key configuration options:
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `apiKey` | string | required | Your Trieve API key |
+| `datasetId` | string | required | Dataset to search |
+| `theme` | `"light"` \| `"dark"` | `"light"` | Visual theme |
+| `chat` | boolean | `true` | Enable chat/RAG mode |
+| `analytics` | boolean | `true` | Track search analytics |
+| `searchOptions` | object | `{search_type: "fulltext"}` | Search configuration |
+| `defaultSearchQueries` | string[] | `[]` | Suggested search queries |
+| `brandColor` | string | `"#CB53EB"` | Primary brand color |
+| `brandName` | string | - | Your brand name |
+| `suggestedQueries` | boolean | `true` | Show suggested queries |
+
+## Docusaurus Integration
+
+Add Trieve search to your Docusaurus documentation site.
+
+### Installation
+
+```bash
+npm install @trieve/docusaurus-search-theme
+```
+
+### Configuration
+
+Add to your `docusaurus.config.js`:
+
+```javascript
+module.exports = {
+  themes: [
+    [
+      require.resolve("@trieve/docusaurus-search-theme"),
+      {
+        apiKey: "tr-********************************",
+        datasetId: "your-dataset-id",
+        chat: true,
+        analytics: true,
+        defaultSearchQueries: [
+          "How to use the API reference?",
+          "Is there a Python SDK?",
+          "How to get started?"
+        ],
+        brandName: "My Docs",
+        accentColor: "#3b82f6",
+      }
+    ]
+  ]
+};
+```
+
+### Features
+
+- Seamless integration with Docusaurus UI
+- Supports light and dark themes
+- Chat mode for RAG queries
+- Analytics tracking
+- Customizable branding
+
+## Fumadocs Adapter
+
+Integrate Trieve search into Fumadocs documentation sites.
+
+### Installation
+
+```bash
+npm install trieve-fumadocs-adapter
+```
+
+### Usage
+
+```typescript
+import { SearchTrieve } from "trieve-fumadocs-adapter/components/dialog/search";
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "your-dataset-id",
+});
+
+export function Layout({ children }) {
+  return (
+    <>
+      <SearchTrieve trieve={trieve} />
+      {children}
+    </>
+  );
+}
+```
+
+## VitePress Adapter
+
+Sync your VitePress documentation to Trieve.
+
+### Installation
+
+```bash
+npm install trieve-vitepress-adapter
+```
+
+### Usage
+
+The adapter provides a CLI tool to sync your VitePress content:
+
+```bash
+# Set environment variables
+export TRIEVE_API_KEY="tr-********************************"
+export TRIEVE_DATASET_ID="your-dataset-id"
+
+# Sync your docs
+npx trieve-vitepress-adapter sync ./docs
+```
+
+### Features
+
+- Automatic content synchronization
+- Markdown parsing and chunking
+- Metadata extraction
+- Tag generation
+
+## n8n Nodes
+
+Use Trieve in your n8n workflows.
+
+### Installation
+
+Install from the n8n community nodes:
+
+1. Open n8n settings
+2. Go to "Community Nodes"
+3. Search for "trieve"
+4. Click Install
+
+### Setup
+
+1. Create an account at [dashboard.trieve.ai](https://dashboard.trieve.ai)
+2. Create a dataset
+3. Generate an API key
+4. Configure credentials in n8n with your API key and dataset ID
+
+### Available Operations
+
+#### Create Chunk
+
+Add content to your Trieve dataset:
+
+- **Chunk HTML**: Content to store
+- **Tag Set**: Comma-separated tags
+- **Tracking ID**: Unique identifier
+- **Metadata**: Additional JSON data
+
+#### Search Chunks
+
+Search through your content:
+
+- **Query**: Search text
+- **Search Type**: Fulltext, Hybrid, or Semantic
+- **Page Size**: Number of results
+- **Filter**: JSON filter object
+
+#### Tool Call
+
+Execute custom functions with LLM-powered parameter extraction:
+
+```json
+{
+  "function_input": "This is an important document about project X",
+  "function_name": "is_important",
+  "function_description": "Determine if the input is important",
+  "parameters": [
+    {
+      "name": "is_important",
+      "parameter_type": "boolean",
+      "description": "Whether the input is important"
+    },
+    {
+      "name": "importance_score",
+      "parameter_type": "number",
+      "description": "Score from 0-10 indicating importance"
+    }
+  ]
+}
+```
+
+### Example Workflow
+
+1. **Trigger**: Webhook receives document
+2. **Trieve Node**: Create chunk with document content
+3. **Trieve Node**: Search for related documents
+4. **Trieve Node**: Tool call to classify importance
+5. **Conditional**: Route based on importance score
+
+## MCP Server
+
+Model Context Protocol server for AI agents (Claude Desktop, etc.).
+
+### Installation
+
+#### Via Smithery (Recommended)
+
+```bash
+npx -y @smithery/cli install trieve-mcp-server --client claude
+```
+
+#### Manual Installation
+
+```bash
+npm install trieve-mcp-server
+```
+
+### Claude Desktop Configuration
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "trieve-mcp-server": {
+      "command": "npx",
+      "args": ["trieve-mcp-server@latest"],
+      "env": {
+        "TRIEVE_API_KEY": "tr-********************************",
+        "TRIEVE_ORGANIZATION_ID": "your-org-id",
+        "TRIEVE_DATASET_ID": "your-dataset-id"
+      }
+    }
+  }
+}
+```
+
+### Available Tools
+
+#### search
+
+Search through Trieve datasets:
+
+```json
+{
+  "query": "example search query",
+  "datasetId": "your-dataset-id",
+  "searchType": "semantic",
+  "page": 1,
+  "pageSize": 10
+}
+```
+
+### Available Resources
+
+Datasets are exposed as MCP resources:
+
+- URI format: `trieve://datasets/{dataset-id}`
+- Attachable in Claude Desktop
+- Automatically listed from your organization
+
+## Shopify Extension
+
+Add intelligent search and recommendations to your Shopify store.
+
+### Features
+
+- Product search with semantic understanding
+- AI-powered product recommendations
+- Natural language queries
+- Analytics and insights
+
+### Installation
+
+1. Install from the Shopify App Store
+2. Connect your Trieve account
+3. Configure your dataset
+4. Customize the search interface
+
+## Fern Adapter
+
+Sync Fern-generated documentation to Trieve.
+
+### Usage
+
+```bash
+npm install trieve-fern-adapter
+```
+
+The adapter automatically syncs your Fern documentation structure to Trieve, preserving organization and metadata.
+
+## Getting Help
+
+For integration support:
+
+- [GitHub Repository](https://github.com/devflowinc/trieve)
+- [Discord Community](https://discord.gg/eBJXXZDB8z)
+- [Documentation](/)
+- Email: [developers@trieve.ai](mailto:developers@trieve.ai)

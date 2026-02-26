@@ -1,0 +1,390 @@
+---
+title: Python SDK
+description: Official Python client for the Trieve API with comprehensive search and analytics capabilities
+---
+
+The Trieve Python SDK provides a complete interface to the Trieve API, enabling semantic search, RAG, analytics, and data management in Python applications.
+
+## Installation
+
+Install the SDK using pip:
+
+```bash
+pip install trieve-py-client
+```
+
+## Requirements
+
+- Python 3.7 or higher
+- Dependencies are automatically installed with the package
+
+## Quick Start
+
+Initialize the API client with your credentials:
+
+```python
+import trieve_py_client
+from trieve_py_client.rest import ApiException
+from pprint import pprint
+
+# Configure the client
+configuration = trieve_py_client.Configuration(
+    host="https://api.trieve.ai"
+)
+
+# Set your API key
+configuration.api_key['ApiKey'] = 'tr-********************************'
+
+# Create an API client instance
+api_client = trieve_py_client.ApiClient(configuration)
+```
+
+## Core Features
+
+### Search
+
+Perform semantic, full-text, or hybrid search:
+
+```python
+from trieve_py_client.api import chunk_api
+from trieve_py_client.models import SearchChunksReqPayload
+
+# Create API instance
+chunk_instance = chunk_api.ChunkApi(api_client)
+
+# Configure search request
+search_request = SearchChunksReqPayload(
+    query="machine learning algorithms",
+    search_type="hybrid",
+    page_size=10,
+    page=1
+)
+
+try:
+    # Execute search
+    search_results = chunk_instance.search_chunks(search_request)
+    pprint(search_results)
+except ApiException as e:
+    print(f"Search failed: {e}")
+```
+
+### Create Chunks
+
+Add content to your dataset:
+
+```python
+from trieve_py_client.models import CreateChunkReqPayloadEnum
+
+chunk_data = CreateChunkReqPayloadEnum(
+    chunk_html="<p>Your content here</p>",
+    link="https://example.com/page",
+    tag_set=["tutorial", "getting-started"],
+    metadata={
+        "title": "Getting Started Guide",
+        "author": "John Doe"
+    }
+)
+
+try:
+    created_chunk = chunk_instance.create_chunk(chunk_data)
+    print(f"Chunk created with ID: {created_chunk.id}")
+except ApiException as e:
+    print(f"Chunk creation failed: {e}")
+```
+
+### Update Chunks
+
+Modify existing chunks:
+
+```python
+from trieve_py_client.models import UpdateChunkReqPayload
+
+update_request = UpdateChunkReqPayload(
+    chunk_id="your-chunk-uuid",
+    chunk_html="<p>Updated content</p>",
+    tag_set=["updated", "tutorial"],
+    metadata={
+        "last_modified": "2024-01-15",
+        "version": "2.0"
+    }
+)
+
+try:
+    chunk_instance.update_chunk(update_request)
+    print("Chunk updated successfully")
+except ApiException as e:
+    print(f"Update failed: {e}")
+```
+
+### Delete Chunks
+
+```python
+try:
+    # Delete by chunk ID
+    chunk_instance.delete_chunk(chunk_id="your-chunk-uuid")
+    print("Chunk deleted successfully")
+except ApiException as e:
+    print(f"Deletion failed: {e}")
+
+# Or delete by tracking ID
+try:
+    chunk_instance.delete_chunk_by_tracking_id(tracking_id="custom-tracking-id")
+except ApiException as e:
+    print(f"Deletion failed: {e}")
+```
+
+### Autocomplete
+
+Provide real-time search suggestions:
+
+```python
+from trieve_py_client.models import AutocompleteReqPayload
+
+autocomplete_request = AutocompleteReqPayload(
+    query="how to",
+    search_type="fulltext",
+    page_size=5,
+    extend_results=True
+)
+
+try:
+    suggestions = chunk_instance.autocomplete(autocomplete_request)
+    for suggestion in suggestions:
+        print(suggestion)
+except ApiException as e:
+    print(f"Autocomplete failed: {e}")
+```
+
+## Advanced Features
+
+### RAG (Retrieval Augmented Generation)
+
+Generate AI responses based on your dataset:
+
+```python
+from trieve_py_client.api import message_api
+from trieve_py_client.models import CreateMessageReqPayload
+
+message_instance = message_api.MessageApi(api_client)
+
+rag_request = CreateMessageReqPayload(
+    topic_id="topic-uuid",
+    new_message_content="What are the benefits of using Trieve?",
+    llm_options={
+        "model": "gpt-4",
+        "temperature": 0.7
+    }
+)
+
+try:
+    response = message_instance.create_message(rag_request)
+    print(response.content)
+except ApiException as e:
+    print(f"RAG query failed: {e}")
+```
+
+### Chunk Groups
+
+Organize and search within groups:
+
+```python
+from trieve_py_client.api import chunk_group_api
+from trieve_py_client.models import CreateChunkGroupReqPayloadEnum
+
+group_instance = chunk_group_api.ChunkGroupApi(api_client)
+
+# Create a group
+group_data = CreateChunkGroupReqPayloadEnum(
+    name="Product Documentation",
+    description="All product-related docs",
+    tag_set=["product", "docs"]
+)
+
+try:
+    group = group_instance.create_chunk_group(group_data)
+    print(f"Group created: {group.id}")
+except ApiException as e:
+    print(f"Group creation failed: {e}")
+
+# Add chunk to group
+try:
+    group_instance.add_chunk_to_group(
+        group_id=group.id,
+        chunk_id="chunk-uuid"
+    )
+except ApiException as e:
+    print(f"Failed to add chunk to group: {e}")
+```
+
+### Analytics
+
+Track and analyze search behavior:
+
+```python
+from trieve_py_client.api import analytics_api
+from trieve_py_client.models import SearchAnalyticsFilter
+
+analytics_instance = analytics_api.AnalyticsApi(api_client)
+
+analytics_filter = SearchAnalyticsFilter(
+    date_range={
+        "gt": "2024-01-01",
+        "lt": "2024-12-31"
+    },
+    granularity="day"
+)
+
+try:
+    analytics = analytics_instance.get_search_analytics(analytics_filter)
+    pprint(analytics)
+except ApiException as e:
+    print(f"Analytics query failed: {e}")
+```
+
+### File Upload
+
+Upload and process files:
+
+```python
+from trieve_py_client.api import file_api
+from trieve_py_client.models import UploadFileReqPayload
+
+file_instance = file_api.FileApi(api_client)
+
+with open("document.pdf", "rb") as f:
+    upload_request = UploadFileReqPayload(
+        file=f,
+        tag_set=["documentation"],
+        metadata={
+            "department": "engineering"
+        }
+    )
+    
+    try:
+        upload_result = file_instance.upload_file_handler(upload_request)
+        print(f"File uploaded: {upload_result.id}")
+    except ApiException as e:
+        print(f"Upload failed: {e}")
+```
+
+### Dataset Management
+
+```python
+from trieve_py_client.api import dataset_api
+from trieve_py_client.models import CreateDatasetReqPayload
+
+dataset_instance = dataset_api.DatasetApi(api_client)
+
+# Create dataset
+dataset_request = CreateDatasetReqPayload(
+    dataset_name="My New Dataset",
+    organization_id="org-uuid",
+    server_configuration={
+        "EMBEDDING_SIZE": 1536,
+        "DISTANCE_METRIC": "cosine"
+    }
+)
+
+try:
+    dataset = dataset_instance.create_dataset(dataset_request)
+    print(f"Dataset created: {dataset.id}")
+except ApiException as e:
+    print(f"Dataset creation failed: {e}")
+```
+
+### Filtering and Search Options
+
+Apply advanced filters:
+
+```python
+search_with_filters = SearchChunksReqPayload(
+    query="API documentation",
+    search_type="hybrid",
+    filters={
+        "must": [
+            {
+                "field": "tag_set",
+                "match_any": ["api", "reference"]
+            },
+            {
+                "field": "metadata.version",
+                "match_any": ["v2.0"]
+            }
+        ],
+        "must_not": [
+            {
+                "field": "metadata.deprecated",
+                "match_any": ["true"]
+            }
+        ]
+    },
+    page_size=20
+)
+
+try:
+    results = chunk_instance.search_chunks(search_with_filters)
+    pprint(results)
+except ApiException as e:
+    print(f"Search failed: {e}")
+```
+
+## Error Handling
+
+Handle API errors properly:
+
+```python
+from trieve_py_client.rest import ApiException
+
+try:
+    results = chunk_instance.search_chunks(search_request)
+except ApiException as e:
+    if e.status == 401:
+        print("Invalid API key")
+    elif e.status == 404:
+        print("Dataset not found")
+    elif e.status == 429:
+        print("Rate limit exceeded")
+    else:
+        print(f"API error: {e.status} - {e.reason}")
+        print(f"Details: {e.body}")
+```
+
+## Available APIs
+
+The Python SDK provides the following API classes:
+
+- `AnalyticsApi` - Search and usage analytics
+- `ChunkApi` - Chunk CRUD and search operations
+- `ChunkGroupApi` - Group management and search
+- `DatasetApi` - Dataset configuration and management
+- `FileApi` - File upload and processing
+- `MessageApi` - RAG and chat operations
+- `TopicApi` - Conversation topic management
+- `OrganizationApi` - Organization settings
+- `UserApi` - User management
+- `AuthApi` - Authentication operations
+
+## Configuration Options
+
+Customize the client configuration:
+
+```python
+configuration = trieve_py_client.Configuration(
+    host="https://api.trieve.ai",
+    api_key={'ApiKey': 'your-api-key'},
+    api_key_prefix={'ApiKey': 'Bearer'},  # Optional
+)
+
+# Configure additional settings
+configuration.verify_ssl = True
+configuration.ssl_ca_cert = None
+configuration.cert_file = None
+configuration.key_file = None
+configuration.timeout = 60  # seconds
+```
+
+## Support
+
+- [GitHub Repository](https://github.com/devflowinc/trieve/tree/main/clients/python-sdk)
+- [Discord Community](https://discord.gg/eBJXXZDB8z)
+- [API Documentation](/api-reference)

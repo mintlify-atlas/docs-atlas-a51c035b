@@ -1,0 +1,183 @@
+---
+title: "Update Chunk"
+description: "Update an existing chunk by chunk_id or tracking_id. If you try to change the tracking_id to one that already exists, the request will fail."
+---
+
+<RequestExample>
+```bash cURL
+curl -X PUT https://api.trieve.ai/api/chunk \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chunk_id": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+    "chunk_html": "<p>Updated HTML content</p>",
+    "link": "https://example.com/updated",
+    "tag_set": ["tag1", "tag2", "tag3"],
+    "metadata": {"key1": "updated_value"},
+    "weight": 0.8
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+await trieve.updateChunk({
+  chunk_id: "d290f1ee-6c54-4b01-90e6-d701748f0851",
+  chunk_html: "<p>Updated HTML content</p>",
+  link: "https://example.com/updated",
+  tag_set: ["tag1", "tag2", "tag3"],
+  metadata: {key1: "updated_value"},
+  weight: 0.8
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="YOUR_API_KEY",
+  dataset_id="YOUR_DATASET_ID"
+)
+
+trieve.update_chunk(
+  chunk_id="d290f1ee-6c54-4b01-90e6-d701748f0851",
+  chunk_html="<p>Updated HTML content</p>",
+  link="https://example.com/updated",
+  tag_set=["tag1", "tag2", "tag3"],
+  metadata={"key1": "updated_value"},
+  weight=0.8
+)
+```
+</RequestExample>
+
+## Method and Path
+
+<CodeGroup>
+```http
+PUT /api/chunk
+```
+</CodeGroup>
+
+## Authentication
+
+Requires API key with **admin** role for the specified dataset's organization.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+## Request Body
+
+<ParamField body="chunk_id" type="string" optional>
+  Id of the chunk you want to update. You can provide either the chunk_id or the tracking_id. If both are provided, the chunk_id will be used.
+</ParamField>
+
+<ParamField body="tracking_id" type="string" optional>
+  Tracking_id of the chunk you want to update. This is required to match an existing chunk if chunk_id is not provided.
+</ParamField>
+
+<ParamField body="tag_set" type="array" optional>
+  List of tags. This can be used to filter chunks by tag. If no tag_set is provided, the existing tag_set will be used.
+</ParamField>
+
+<ParamField body="link" type="string" optional>
+  Link of the chunk you want to update. If no link is provided, the existing link will be used.
+</ParamField>
+
+<ParamField body="num_value" type="number" optional>
+  Arbitrary numerical value that can be used to filter chunks. If no num_value is provided, the existing num_value will be used.
+</ParamField>
+
+<ParamField body="chunk_html" type="string" optional>
+  HTML content of the chunk you want to update. The innerText of the HTML will be used to create the embedding vector. If no chunk_html is provided, the existing chunk_html will be used.
+</ParamField>
+
+<ParamField body="metadata" type="object" optional>
+  JSON object which can be used to filter chunks. If no metadata is provided, the existing metadata will be used.
+</ParamField>
+
+<ParamField body="time_stamp" type="string" optional>
+  ISO 8601 combined date and time without timezone. Used for time window filtering and recency-biasing search results. If no time_stamp is provided, the existing time_stamp will be used.
+</ParamField>
+
+<ParamField body="weight" type="number" optional>
+  Float which can be used to bias search results. The magnitude only matters relative to other chunks in the dataset. If no weight is provided, the existing weight will be used.
+</ParamField>
+
+<ParamField body="group_ids" type="array" optional>
+  Ids of the groups that the chunk should be placed into.
+</ParamField>
+
+<ParamField body="group_tracking_ids" type="array" optional>
+  Tracking_ids of the groups that the chunk should be placed into.
+</ParamField>
+
+<ParamField body="location" type="object" optional>
+  GeoInfo object which lets you specify a latitude and longitude for later filtering.
+  <Expandable title="properties">
+    <ParamField body="lat" type="number" required>
+      Latitude
+    </ParamField>
+    <ParamField body="lon" type="number" required>
+      Longitude
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="image_urls" type="array" optional>
+  List of urls to images that are associated with the chunk. If no image_urls are provided, the existing image_urls will be used.
+</ParamField>
+
+<ParamField body="convert_html_to_text" type="boolean" optional>
+  Convert HTML to raw text before processing to avoid adding noise to the vector embeddings. Default is true.
+</ParamField>
+
+<ParamField body="fulltext_boost" type="object" optional>
+  Boost certain phrases in the fulltext (SPLADE) and BM25 search results.
+  <Expandable title="properties">
+    <ParamField body="phrase" type="string" required>
+      The phrase to boost
+    </ParamField>
+    <ParamField body="boost_factor" type="number" required>
+      Amount to multiplicatively increase the frequency of the tokens
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="semantic_boost" type="object" optional>
+  Move the embedding vector of the chunk in the direction of the distance phrase.
+  <Expandable title="properties">
+    <ParamField body="phrase" type="string" required>
+      Terms to embed to create the vector
+    </ParamField>
+    <ParamField body="distance_factor" type="number" required>
+      Multiplier factor to apply before summing with the chunk_html embedding vector
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+Returns a 204 No Content response on success.
+
+## Status Codes
+
+<ResponseField name="204" type="Success">
+  Chunk successfully updated
+</ResponseField>
+
+<ResponseField name="400" type="Error">
+  Service error relating to updating chunk, likely due to conflicting tracking_id or missing chunk_id/tracking_id
+</ResponseField>

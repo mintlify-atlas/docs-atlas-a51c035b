@@ -1,0 +1,149 @@
+---
+title: "Delete Dataset"
+description: "Delete a dataset by its ID"
+---
+
+## DELETE /api/dataset/{dataset_id}
+
+Delete a dataset by its ID. The authenticated user must be an owner of the organization to delete a dataset. This operation is handled asynchronously to avoid expensive search index compaction.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid. This must match the dataset_id in the path.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key with owner permissions
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="dataset_id" type="string" required>
+  The id of the dataset you want to delete.
+</ParamField>
+
+### Response
+
+Returns a `204 No Content` status code on successful deletion.
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE "https://api.trieve.ai/api/dataset/e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "TR-Dataset: e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "Authorization: YOUR_API_KEY"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+await trieve.deleteDataset({
+  datasetId: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+});
+
+console.log("Dataset deleted successfully");
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    dataset_id="e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+)
+
+trieve.delete_dataset(
+    dataset_id="e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3"
+)
+
+print("Dataset deleted successfully")
+```
+
+</CodeGroup>
+
+### Alternative: Delete Dataset by Tracking ID
+
+You can also delete a dataset using its tracking ID:
+
+**Endpoint:** `DELETE /api/dataset/tracking_id/{tracking_id}`
+
+**Headers:**
+- `TR-Dataset`: The tracking_id of the dataset to delete
+- `Authorization`: Your API key with owner permissions
+
+**Example:**
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE "https://api.trieve.ai/api/dataset/tracking_id/my-dataset-001" \
+  -H "TR-Dataset: my-dataset-001" \
+  -H "Authorization: YOUR_API_KEY"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "my-dataset-001" // Using tracking_id
+});
+
+await trieve.deleteDatasetByTrackingId({
+  trackingId: "my-dataset-001"
+});
+
+console.log("Dataset deleted successfully");
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    dataset_id="my-dataset-001"  # Using tracking_id
+)
+
+trieve.delete_dataset_by_tracking_id(
+    tracking_id="my-dataset-001"
+)
+
+print("Dataset deleted successfully")
+```
+
+</CodeGroup>
+
+### Important Notes
+
+- The `TR-Dataset` header must match the `dataset_id` in the path parameter
+- Dataset deletion is handled asynchronously to avoid expensive search index compaction operations
+- All chunks, files, groups, and data associated with the dataset will be permanently deleted
+- Analytics data for the dataset will be retained
+- This operation cannot be undone
+- You must be an owner of the organization that owns the dataset
+
+<Warning>
+  **This action is irreversible.** Once a dataset is deleted, all its data including chunks, files, and groups will be permanently removed. Make sure you have backups if needed.
+</Warning>
+
+### Clear Dataset Instead
+
+If you want to remove all data from a dataset but keep the dataset itself and its analytics, consider using the **Clear Dataset** endpoint instead:
+
+**Endpoint:** `PUT /api/dataset/clear/{dataset_id}`
+
+This will remove all chunks, files, and groups from the dataset while retaining the dataset configuration and analytics.
+
+```bash cURL
+curl -X PUT "https://api.trieve.ai/api/dataset/clear/e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "TR-Dataset: e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3" \
+  -H "Authorization: YOUR_API_KEY"
+```

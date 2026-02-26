@@ -1,0 +1,379 @@
+---
+title: Messages
+description: Create messages and generate RAG-powered chat completions
+---
+
+## Creating Messages
+
+Messages are the core of conversational AI in Trieve. Each message is attached to a topic and triggers RAG retrieval and LLM completion.
+
+### Basic Message Creation
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch('https://api.trieve.ai/api/message', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    topic_id: 'topic-uuid',
+    new_message_content: 'What are the key features of your product?'
+  })
+});
+
+// Handle streaming response
+const reader = response.body.getReader();
+while (true) {
+  const {done, value} = await reader.read();
+  if (done) break;
+  console.log(new TextDecoder().decode(value));
+}
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.trieve.ai/api/message',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'topic_id': 'topic-uuid',
+        'new_message_content': 'What are the key features of your product?'
+    },
+    stream=True
+)
+
+for chunk in response.iter_content(chunk_size=None):
+    print(chunk.decode('utf-8'))
+```
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/message \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic_id": "topic-uuid",
+    "new_message_content": "What are the key features of your product?"
+  }'
+```
+</CodeGroup>
+
+## Request Parameters
+
+From the source at `server/src/handlers/message_handler.rs:88-143`, the `CreateMessageReqPayload` includes:
+
+### Required
+
+- `topic_id` (uuid) - The topic to attach this message to
+
+### Message Content (one required)
+
+- `new_message_content` (string) - Text content of the user message
+- `audio_input` (string) - Base64 encoded audio (transcribed via Whisper)
+- `image_urls` (array) - URLs of images to attach (for vision models)
+
+### Search Configuration
+
+<ParamField path="search_type" type="string" default="hybrid">
+  Search method: `semantic`, `fulltext`, `hybrid`, or `bm25`
+</ParamField>
+
+<ParamField path="page_size" type="number">
+  Number of chunks to retrieve. Set to `0` to disable RAG and only use conversation context
+</ParamField>
+
+<ParamField path="search_query" type="string">
+  Override the search query. Defaults to the user's message or HyDE-generated query
+</ParamField>
+
+<ParamField path="filters" type="object">
+  Filter chunks by metadata, tags, or other attributes
+</ParamField>
+
+<ParamField path="score_threshold" type="number" default="0.0">
+  Minimum relevance score for retrieved chunks
+</ParamField>
+
+### LLM Options
+
+<ParamField path="llm_options" type="object">
+  Configure the language model behavior
+  
+  ```json
+  {
+    "temperature": 0.7,
+    "frequency_penalty": 0.0,
+    "presence_penalty": 0.0,
+    "stop_tokens": ["END"],
+    "system_prompt": "You are a helpful assistant.",
+    "stream_response": true
+  }
+  ```
+</ParamField>
+
+<ParamField path="model" type="string">
+  Model name to use. Defaults to dataset's configured model
+</ParamField>
+
+### Advanced Options
+
+<ParamField path="use_agentic_search" type="boolean" default="false">
+  Enable LLM tool calling for sophisticated retrieval strategies
+</ParamField>
+
+<ParamField path="use_group_search" type="boolean" default="false">
+  Search within groups instead of individual chunks
+</ParamField>
+
+<ParamField path="concat_user_messages_query" type="boolean" default="false">
+  Concatenate all user messages as the search query
+</ParamField>
+
+<ParamField path="number_of_messages_to_include" type="number" default="10">
+  Number of previous messages to include in context window
+</ParamField>
+
+<ParamField path="rag_context" type="string">
+  Override how chunks are formatted in the context window
+</ParamField>
+
+<ParamField path="only_include_docs_used" type="boolean" default="false">
+  Only return chunks actually used in the completion
+</ParamField>
+
+## Response Format
+
+### Streaming Response (Default)
+
+The API returns an HTTP stream. The response includes a `TR-QueryID` header for analytics tracking.
+
+```
+[{"chunk_id":"abc-123","content":"Product features include..."}]||Based on the documentation, the key features are...
+```
+
+### Non-Streaming Response
+
+Set `llm_options.stream_response: false` to get a JSON response:
+
+```json
+"[{\"chunk_id\":\"abc-123\"}]||Complete response text"
+```
+
+<Warning>
+Streaming is recommended for better user experience and lower latency perception.
+</Warning>
+
+## Retrieving Messages
+
+Get all messages for a topic:
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch(
+  `https://api.trieve.ai/api/messages/${topicId}`,
+  {
+    headers: {
+      'Authorization': 'Bearer YOUR_API_KEY',
+      'TR-Dataset': 'YOUR_DATASET_ID'
+    }
+  }
+);
+
+const messages = await response.json();
+```
+
+```python Python
+response = requests.get(
+    f'https://api.trieve.ai/api/messages/{topic_id}',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    }
+)
+
+messages = response.json()
+```
+</CodeGroup>
+
+See `server/src/handlers/message_handler.rs:323-370` for implementation details.
+
+## Editing Messages
+
+Edit a message and regenerate all subsequent messages:
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch('https://api.trieve.ai/api/message', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    topic_id: 'topic-uuid',
+    message_sort_order: 2,
+    new_message_content: 'Updated question about features'
+  })
+});
+```
+
+```python Python
+response = requests.put(
+    'https://api.trieve.ai/api/message',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'topic_id': 'topic-uuid',
+        'message_sort_order': 2,
+        'new_message_content': 'Updated question about features'
+    },
+    stream=True
+)
+```
+</CodeGroup>
+
+<Warning>
+Editing a message deletes all messages after it in the sort order. This is destructive and cannot be undone.
+</Warning>
+
+See `server/src/handlers/message_handler.rs:588-659` for implementation.
+
+## Regenerating Messages
+
+Regenerate the last assistant response:
+
+<CodeGroup>
+```typescript TypeScript
+const response = await fetch('https://api.trieve.ai/api/message', {
+  method: 'PATCH',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    topic_id: 'topic-uuid',
+    llm_options: {
+      temperature: 0.9  // Try a different temperature
+    }
+  })
+});
+```
+
+```python Python
+response = requests.patch(
+    'https://api.trieve.ai/api/message',
+    headers={
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'topic_id': 'topic-uuid',
+        'llm_options': {
+            'temperature': 0.9
+        }
+    },
+    stream=True
+)
+```
+</CodeGroup>
+
+See `server/src/handlers/message_handler.rs:661-900` for implementation.
+
+## Message Structure
+
+From `server/src/data/models.rs:163-190`, each message includes:
+
+```json
+{
+  "id": "message-uuid",
+  "topic_id": "topic-uuid",
+  "sort_order": 1,
+  "content": "Message content or [chunks]||content",
+  "role": "user" | "assistant" | "system",
+  "deleted": false,
+  "prompt_tokens": 300,
+  "completion_tokens": 150,
+  "created_at": "2024-01-01T00:00:00.000Z",
+  "updated_at": "2024-01-01T00:00:00.000Z",
+  "dataset_id": "dataset-uuid"
+}
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Optimize Context Window Size">
+    Use `number_of_messages_to_include` to balance context quality and token usage. Start with 10 and adjust based on your use case.
+  </Accordion>
+  
+  <Accordion title="Handle Streaming Properly">
+    Always implement proper error handling for streaming responses. See the [Streaming](/rag/streaming) guide for details.
+  </Accordion>
+  
+  <Accordion title="Use Appropriate Search Types">
+    - `semantic` for conceptual questions
+    - `fulltext` for exact matches and keywords
+    - `hybrid` for best of both (recommended default)
+  </Accordion>
+  
+  <Accordion title="Set Score Thresholds">
+    Use `score_threshold` to filter irrelevant chunks. Start with 0.7 for strict relevance or 0.3 for broader context.
+  </Accordion>
+  
+  <Accordion title="Track Analytics">
+    Store the `TR-QueryID` response header to analyze chat performance in the analytics dashboard.
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Disable RAG for Pure Chat
+
+```json
+{
+  "topic_id": "topic-uuid",
+  "new_message_content": "Tell me a joke",
+  "page_size": 0
+}
+```
+
+### Custom System Prompt
+
+```json
+{
+  "topic_id": "topic-uuid",
+  "new_message_content": "Explain quantum computing",
+  "llm_options": {
+    "system_prompt": "You are a physics professor explaining concepts to undergraduate students. Use simple analogies."
+  }
+}
+```
+
+### Multimodal Message with Images
+
+```json
+{
+  "topic_id": "topic-uuid",
+  "new_message_content": "What's in this image?",
+  "image_urls": ["https://example.com/diagram.png"],
+  "model": "gpt-4-vision-preview"
+}
+```
+
+## Related Endpoints
+
+- [Create Message](/api-reference/messages/create) - Create new messages
+- [List Messages](/api-reference/messages/list) - Get all messages in a topic
+- [Regenerate Message](/api-reference/messages/regenerate) - Regenerate last response
+- [Edit Message](/api-reference/messages/edit) - Edit existing message

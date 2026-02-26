@@ -1,0 +1,86 @@
+---
+title: 'Update Topic'
+api: 'PUT /api/topic'
+description: 'Update an existing chat topic'
+---
+
+Update an existing chat topic. Currently, only the name of the topic can be updated.
+
+## Request
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField body="topic_id" type="string" required>
+  The id of the topic to target.
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  The new name of the topic. A name is not generated from this field, it is used as-is.
+</ParamField>
+
+## Response
+
+Returns a 204 No Content response on success.
+
+<RequestExample>
+
+```bash cURL
+curl -X PUT "https://api.trieve.ai/api/topic" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "topic_id": "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+    "name": "Updated Topic Name"
+  }'
+```
+
+```typescript TypeScript
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID",
+});
+
+await trieve.updateTopic({
+  topic_id: "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  name: "Updated Topic Name",
+});
+
+console.log("Topic updated successfully");
+```
+
+```python Python
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    dataset_id="YOUR_DATASET_ID"
+)
+
+trieve.update_topic(
+    topic_id="e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+    name="Updated Topic Name"
+)
+
+print("Topic updated successfully")
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```text 204
+No Content
+```
+
+```json 400
+{
+  "message": "Topic name must not be empty"
+}
+```
+
+</ResponseExample>

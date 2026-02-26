@@ -1,0 +1,448 @@
+---
+title: 'Get Search Analytics'
+openapi: 'POST /api/analytics/search'
+---
+
+This endpoint allows you to view comprehensive search analytics for your dataset. It provides detailed insights into search queries, performance metrics, user behavior, and more.
+
+## Authentication
+
+Requires an API key with `admin` role.
+
+## Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key in the format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+## Request Body
+
+The request body accepts a `SearchAnalytics` object with various query types:
+
+### Latency Graph
+
+<ParamField body="type" type="string" required>
+  Set to `latency_graph` to get search latency metrics over time.
+</ParamField>
+
+<ParamField body="filter" type="SearchAnalyticsFilter">
+  Optional filter to narrow down the data.
+</ParamField>
+
+<ParamField body="granularity" type="string">
+  Time granularity: `minute`, `hour`, `day`, `week`, or `month`.
+</ParamField>
+
+### Search Usage Graph
+
+<ParamField body="type" type="string" required>
+  Set to `search_usage_graph` to get search volume over time.
+</ParamField>
+
+### Search Metrics
+
+<ParamField body="type" type="string" required>
+  Set to `search_metrics` to get overall search performance metrics.
+</ParamField>
+
+### Head Queries
+
+<ParamField body="type" type="string" required>
+  Set to `head_queries` to get the most popular search queries.
+</ParamField>
+
+<ParamField body="page" type="integer">
+  Page number for pagination (0-indexed).
+</ParamField>
+
+### Low Confidence Queries
+
+<ParamField body="type" type="string" required>
+  Set to `low_confidence_queries` to get queries with poor results.
+</ParamField>
+
+<ParamField body="threshold" type="number">
+  Confidence threshold (0-1). Queries below this threshold are returned.
+</ParamField>
+
+### No Result Queries
+
+<ParamField body="type" type="string" required>
+  Set to `no_result_queries` to get queries that returned no results.
+</ParamField>
+
+### Search Queries
+
+<ParamField body="type" type="string" required>
+  Set to `search_queries` to get all search queries with optional filters.
+</ParamField>
+
+<ParamField body="has_clicks" type="boolean">
+  Filter by whether queries resulted in clicks.
+</ParamField>
+
+<ParamField body="sort_by" type="string">
+  Sort by: `created_at`, `latency`, `top_score`, etc.
+</ParamField>
+
+<ParamField body="sort_order" type="string">
+  Sort order: `asc` or `desc`.
+</ParamField>
+
+### Query Details
+
+<ParamField body="type" type="string" required>
+  Set to `query_details` to get detailed information about a specific query.
+</ParamField>
+
+<ParamField body="request_id" type="string" required>
+  The UUID of the request to retrieve details for.
+</ParamField>
+
+### Count Queries
+
+<ParamField body="type" type="string" required>
+  Set to `count_queries` to get the total count of queries.
+</ParamField>
+
+<ParamField body="count_collapsed_queries" type="boolean">
+  Whether to count collapsed/duplicate queries separately.
+</ParamField>
+
+### Additional Metrics
+
+Other available types include:
+- `ctr_metrics_over_time` - CTR trends over time
+- `search_conversion_rate` - Conversion rate metrics
+- `searches_per_user` - Average searches per user
+- `search_average_rating` - Average user ratings for search results
+- `popular_filters` - Most commonly used filters
+- `event_funnel` - User event funnel analysis
+- `search_revenue` - Revenue attribution from searches
+
+## Response
+
+The response structure varies based on the query type:
+
+<ResponseField name="LatencyGraph" type="object">
+  Graph data showing search latency over time.
+  
+  <ResponseField name="avg_latency" type="number">
+    Average latency in milliseconds.
+  </ResponseField>
+  
+  <ResponseField name="points" type="array">
+    Time series data points with timestamp and latency values.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="SearchMetrics" type="object">
+  Overall search performance metrics.
+  
+  <ResponseField name="total_queries" type="integer">
+    Total number of search queries.
+  </ResponseField>
+  
+  <ResponseField name="avg_latency" type="number">
+    Average search latency.
+  </ResponseField>
+  
+  <ResponseField name="avg_score" type="number">
+    Average relevance score.
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="HeadQueries" type="object">
+  List of most popular queries.
+  
+  <ResponseField name="queries" type="array">
+    Array of query objects.
+    
+    <ResponseField name="query" type="string">
+      The search query text.
+    </ResponseField>
+    
+    <ResponseField name="count" type="integer">
+      Number of times this query was performed.
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="QueryDetails" type="object">
+  Detailed information about a specific search query.
+  
+  <ResponseField name="request_id" type="string">
+    Unique identifier for the request.
+  </ResponseField>
+  
+  <ResponseField name="query" type="string">
+    The search query text.
+  </ResponseField>
+  
+  <ResponseField name="latency" type="number">
+    Query latency in milliseconds.
+  </ResponseField>
+  
+  <ResponseField name="top_score" type="number">
+    Highest relevance score in results.
+  </ResponseField>
+  
+  <ResponseField name="results" type="array">
+    Array of search result chunks.
+  </ResponseField>
+  
+  <ResponseField name="created_at" type="string">
+    Timestamp when the query was executed.
+  </ResponseField>
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash Get Latency Graph
+curl -X POST https://api.trieve.ai/api/analytics/search \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "latency_graph",
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z"
+      }
+    },
+    "granularity": "day"
+  }'
+```
+
+```typescript Get Head Queries
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const headQueries = await trieve.analytics.getSearchAnalytics({
+  type: "head_queries",
+  filter: {
+    date_range: {
+      gt: "2024-01-01T00:00:00Z"
+    }
+  },
+  page: 0
+});
+
+console.log("Top queries:", headQueries.queries);
+```
+
+```python Get No Result Queries
+import requests
+
+url = "https://api.trieve.ai/api/analytics/search"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "TR-Dataset": "YOUR_DATASET_ID",
+    "Content-Type": "application/json"
+}
+data = {
+    "type": "no_result_queries",
+    "filter": {
+        "date_range": {
+            "gt": "2024-01-01T00:00:00Z"
+        }
+    },
+    "page": 0
+}
+
+response = requests.post(url, json=data, headers=headers)
+no_results = response.json()
+
+print(f"Queries with no results: {len(no_results['queries'])}")
+for query in no_results["queries"]:
+    print(f"  - {query['query']} (count: {query['count']})")
+```
+
+```typescript Get Query Details
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const queryDetails = await trieve.analytics.getSearchAnalytics({
+  type: "query_details",
+  request_id: "123e4567-e89b-12d3-a456-426614174000"
+});
+
+console.log("Query:", queryDetails.query);
+console.log("Latency:", queryDetails.latency, "ms");
+console.log("Results:", queryDetails.results.length);
+```
+
+```bash Get Search Metrics
+curl -X POST https://api.trieve.ai/api/analytics/search \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "search_metrics",
+    "filter": {
+      "date_range": {
+        "gt": "2024-01-01T00:00:00Z",
+        "lt": "2024-12-31T23:59:59Z"
+      }
+    }
+  }'
+```
+
+```python Get Low Confidence Queries
+import requests
+
+url = "https://api.trieve.ai/api/analytics/search"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "TR-Dataset": "YOUR_DATASET_ID",
+    "Content-Type": "application/json"
+}
+data = {
+    "type": "low_confidence_queries",
+    "threshold": 0.5,
+    "filter": {
+        "date_range": {
+            "gt": "2024-01-01T00:00:00Z"
+        }
+    },
+    "page": 0
+}
+
+response = requests.post(url, json=data, headers=headers)
+low_confidence = response.json()
+
+for query in low_confidence["queries"]:
+    print(f"Query: {query['query']} - Confidence: {query['top_score']}")
+```
+
+</CodeGroup>
+
+## Response Examples
+
+### Latency Graph Response
+
+```json
+{
+  "avg_latency": 245.5,
+  "points": [
+    {
+      "timestamp": "2024-01-01T00:00:00Z",
+      "value": 230.2
+    },
+    {
+      "timestamp": "2024-01-02T00:00:00Z",
+      "value": 260.8
+    }
+  ]
+}
+```
+
+### Search Metrics Response
+
+```json
+{
+  "total_queries": 15420,
+  "avg_latency": 245.5,
+  "avg_score": 0.87,
+  "unique_users": 1250,
+  "queries_with_clicks": 12336,
+  "queries_without_clicks": 3084
+}
+```
+
+### Head Queries Response
+
+```json
+{
+  "queries": [
+    {
+      "query": "machine learning",
+      "count": 1234,
+      "avg_score": 0.92
+    },
+    {
+      "query": "artificial intelligence",
+      "count": 987,
+      "avg_score": 0.89
+    },
+    {
+      "query": "neural networks",
+      "count": 756,
+      "avg_score": 0.85
+    }
+  ]
+}
+```
+
+### Query Details Response
+
+```json
+{
+  "request_id": "123e4567-e89b-12d3-a456-426614174000",
+  "query": "machine learning algorithms",
+  "latency": 234.5,
+  "top_score": 0.95,
+  "results_count": 50,
+  "created_at": "2024-01-15T10:30:00Z",
+  "user_id": "user_123",
+  "results": [
+    {
+      "chunk_id": "chunk_abc123",
+      "score": 0.95,
+      "position": 1
+    },
+    {
+      "chunk_id": "chunk_def456",
+      "score": 0.89,
+      "position": 2
+    }
+  ]
+}
+```
+
+## Use Cases
+
+- **Performance Monitoring**: Track search latency and identify slow queries
+- **Query Optimization**: Discover and improve low-performing queries
+- **Content Gap Analysis**: Identify no-result queries to inform content creation
+- **User Behavior Analysis**: Understand what users are searching for
+- **A/B Testing**: Compare search performance across different configurations
+- **Trend Analysis**: Monitor query patterns and search volume over time
+
+## Best Practices
+
+1. **Monitor Latency**: Keep average latency under 500ms for good user experience
+2. **Address No-Result Queries**: Regularly review and add content for common no-result queries
+3. **Improve Low Confidence Queries**: Focus on queries with scores below 0.6
+4. **Use Filters Effectively**: Narrow down analytics to specific time periods or user segments
+5. **Track Popular Queries**: Use head queries to understand user intent and optimize top searches
+6. **Analyze Query Patterns**: Look for trends in search behavior to inform product decisions
+
+## Filters
+
+The `SearchAnalyticsFilter` object supports:
+
+- **date_range**: Filter by date with `gt`, `gte`, `lt`, `lte` operators
+- **search_method**: Filter by search type (semantic, fulltext, hybrid)
+- **search_type**: Filter by search algorithm variant
+- **user_id**: Filter by specific user
+- **request_params**: Filter by specific search parameters used
+
+## Related Endpoints
+
+- [Get Analytics](/api-reference/analytics/get) - General analytics endpoint
+- [Get CTR Analytics](/api-reference/analytics/ctr) - Click-through rate analytics

@@ -1,0 +1,187 @@
+---
+title: 'Search Within Group'
+description: 'Search for chunks within a specific group'
+---
+
+## POST /chunk_group/search
+
+This route allows you to search only within a group. This is useful for when you only want search results to contain chunks which are members of a specific group. If choosing hybrid search, the results will be re-ranked using scores from a cross encoder model.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key for authentication. Must have readonly role or higher.
+</ParamField>
+
+<ParamField header="X-API-Version" type="string">
+  The API version to use for this request. Defaults to V2 for orgs created after July 12, 2024 and V1 otherwise.
+</ParamField>
+
+### Body
+
+<ParamField body="group_id" type="string">
+  The id of the group to search within. One of group_id or group_tracking_id must be provided.
+</ParamField>
+
+<ParamField body="group_tracking_id" type="string">
+  The tracking id of the group to search within. One of group_id or group_tracking_id must be provided.
+</ParamField>
+
+<ParamField body="query" type="string" required>
+  The search query to use for finding relevant chunks within the group.
+</ParamField>
+
+<ParamField body="search_type" type="string" default="hybrid">
+  The type of search to perform. Options are "semantic", "fulltext", "hybrid", or "bm25". Defaults to "hybrid".
+</ParamField>
+
+<ParamField body="page" type="number" default="1">
+  The page number to return. Page is 1-indexed.
+</ParamField>
+
+<ParamField body="page_size" type="number" default="10">
+  The number of results to return per page.
+</ParamField>
+
+<ParamField body="filters" type="object">
+  Filters to apply to the search. This is a JSON object which can contain filters for metadata, tag_set, and other chunk properties.
+</ParamField>
+
+<ParamField body="score_threshold" type="number">
+  Set the minimum score threshold for results. Chunks with a score below this threshold will be excluded.
+</ParamField>
+
+<ParamField body="slim_chunks" type="boolean" default="false">
+  Set slim_chunks to true to avoid returning the content and chunk_html of the chunks. This is useful for when you want to reduce the amount of data over the wire.
+</ParamField>
+
+<ParamField body="highlight_results" type="boolean" default="true">
+  Set highlight_results to false to prevent highlighting the results with `<mark><b>` tags.
+</ParamField>
+
+<ParamField body="highlight_delimiters" type="array">
+  The delimiters to use for highlighting. If not provided, will default to `["<mark><b>", "</b></mark>"]`.
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  The user_id is the id of the user who is making the request. This is used to track user interactions with the search results.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  The unique identifier for the search query.
+</ResponseField>
+
+<ResponseField name="chunks" type="array">
+  Array of chunks that match the search query.
+  <Expandable title="chunk object">
+    <ResponseField name="chunk" type="object">
+      The chunk metadata and content.
+    </ResponseField>
+    <ResponseField name="score" type="number">
+      The relevance score of the chunk.
+    </ResponseField>
+    <ResponseField name="highlights" type="array">
+      Highlighted portions of the chunk that match the query.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total_pages" type="number">
+  The total number of pages available for this search.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/chunk_group/search" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "group_id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+    "query": "oversized black t-shirt",
+    "search_type": "hybrid",
+    "page": 1,
+    "page_size": 10,
+    "highlight_results": true
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+});
+
+const results = await trieve.searchWithinGroup({
+  group_id: "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+  query: "oversized black t-shirt",
+  search_type: "hybrid",
+  page: 1,
+  page_size: 10,
+  highlight_results: true
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="tr-********************************",
+    dataset_id="d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+)
+
+results = trieve.search_within_group(
+    group_id="3c90c3cc-0d44-4b50-8888-8dd25736052a",
+    query="oversized black t-shirt",
+    search_type="hybrid",
+    page=1,
+    page_size=10,
+    highlight_results=True
+)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 Success
+{
+  "id": "8f3e7b2a-1c4d-5e6f-9a0b-3c2d1e4f5a6b",
+  "chunks": [
+    {
+      "chunk": {
+        "id": "7a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
+        "chunk_html": "<mark><b>Oversized</b></mark> <mark><b>black</b></mark> <mark><b>t-shirt</b></mark> with premium cotton blend",
+        "metadata": {
+          "color": "black",
+          "size": "large"
+        },
+        "tracking_id": "TSHIRT001",
+        "created_at": "2021-01-01 00:00:00.000"
+      },
+      "score": 0.95,
+      "highlights": [
+        "<mark><b>Oversized</b></mark> <mark><b>black</b></mark> <mark><b>t-shirt</b></mark>"
+      ]
+    }
+  ],
+  "total_pages": 1
+}
+```
+
+```json 400 Bad Request
+{
+  "message": "Service error relating to getting the groups that the chunk is in"
+}
+```
+
+</ResponseExample>

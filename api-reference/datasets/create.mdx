@@ -1,0 +1,200 @@
+---
+title: "Create Dataset"
+description: "Create a new dataset within an organization"
+---
+
+## POST /api/dataset
+
+Create a new dataset in the organization specified via the TR-Organization header. The authenticated user must be an owner of the organization to create a dataset.
+
+### Headers
+
+<ParamField header="TR-Organization" type="string" required>
+  The organization id to use for the request
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key with owner permissions
+</ParamField>
+
+### Request Body
+
+<ParamField body="dataset_name" type="string" required>
+  Name of the dataset.
+</ParamField>
+
+<ParamField body="tracking_id" type="string">
+  Optional tracking ID for the dataset. Can be used to track the dataset in external systems. Must be unique within the organization. Strongly recommended to not use a valid uuid value as that will not work with the TR-Dataset header.
+</ParamField>
+
+<ParamField body="server_configuration" type="object">
+  The configuration of the dataset. See the example request payload for the potential keys which can be set. It is possible to break your dataset's functionality by erroneously setting this field. We recommend setting through creating a dataset at dashboard.trieve.ai and managing its settings there.
+
+  <Expandable title="Configuration Properties">
+    <ParamField body="EMBEDDING_MODEL_NAME" type="string">
+      The name of the embedding model to use (e.g., "text-embedding-3-small")
+    </ParamField>
+
+    <ParamField body="EMBEDDING_SIZE" type="number">
+      The size of the embedding vectors (e.g., 1536)
+    </ParamField>
+
+    <ParamField body="LLM_DEFAULT_MODEL" type="string">
+      The default LLM model to use (e.g., "gpt-3.5-turbo-1106")
+    </ParamField>
+
+    <ParamField body="BM25_ENABLED" type="boolean">
+      Whether BM25 search is enabled
+    </ParamField>
+
+    <ParamField body="FULLTEXT_ENABLED" type="boolean">
+      Whether full-text search is enabled
+    </ParamField>
+
+    <ParamField body="SEMANTIC_ENABLED" type="boolean">
+      Whether semantic search is enabled
+    </ParamField>
+
+    <ParamField body="SYSTEM_PROMPT" type="string">
+      The system prompt for LLM interactions
+    </ParamField>
+
+    <ParamField body="RAG_PROMPT" type="string">
+      The prompt template for RAG operations
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  Unique identifier of the dataset
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the dataset
+</ResponseField>
+
+<ResponseField name="organization_id" type="string">
+  Unique identifier of the organization that owns the dataset
+</ResponseField>
+
+<ResponseField name="tracking_id" type="string">
+  Tracking ID of the dataset
+</ResponseField>
+
+<ResponseField name="server_configuration" type="object">
+  Configuration of the dataset for RAG, embeddings, BM25, etc.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp of the creation of the dataset
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp of the last update of the dataset
+</ResponseField>
+
+<ResponseField name="deleted" type="number">
+  Flag to indicate if the dataset has been deleted
+</ResponseField>
+
+### Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/dataset" \
+  -H "TR-Organization: YOUR_ORGANIZATION_ID" \
+  -H "Authorization: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dataset_name": "My Dataset",
+    "tracking_id": "my-dataset-001",
+    "server_configuration": {
+      "EMBEDDING_MODEL_NAME": "text-embedding-3-small",
+      "EMBEDDING_SIZE": 1536,
+      "LLM_DEFAULT_MODEL": "gpt-3.5-turbo-1106",
+      "BM25_ENABLED": true,
+      "FULLTEXT_ENABLED": true,
+      "SEMANTIC_ENABLED": true,
+      "SYSTEM_PROMPT": "You are a helpful assistant"
+    }
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  organizationId: "YOUR_ORGANIZATION_ID"
+});
+
+const dataset = await trieve.createDataset({
+  dataset_name: "My Dataset",
+  tracking_id: "my-dataset-001",
+  server_configuration: {
+    EMBEDDING_MODEL_NAME: "text-embedding-3-small",
+    EMBEDDING_SIZE: 1536,
+    LLM_DEFAULT_MODEL: "gpt-3.5-turbo-1106",
+    BM25_ENABLED: true,
+    FULLTEXT_ENABLED: true,
+    SEMANTIC_ENABLED: true,
+    SYSTEM_PROMPT: "You are a helpful assistant"
+  }
+});
+
+console.log("Dataset created:", dataset);
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="YOUR_API_KEY",
+    organization_id="YOUR_ORGANIZATION_ID"
+)
+
+dataset = trieve.create_dataset(
+    dataset_name="My Dataset",
+    tracking_id="my-dataset-001",
+    server_configuration={
+        "EMBEDDING_MODEL_NAME": "text-embedding-3-small",
+        "EMBEDDING_SIZE": 1536,
+        "LLM_DEFAULT_MODEL": "gpt-3.5-turbo-1106",
+        "BM25_ENABLED": True,
+        "FULLTEXT_ENABLED": True,
+        "SEMANTIC_ENABLED": True,
+        "SYSTEM_PROMPT": "You are a helpful assistant"
+    }
+)
+
+print("Dataset created:", dataset)
+```
+
+</CodeGroup>
+
+### Response Example
+
+```json
+{
+  "id": "e3e3e3e3-e3e3-e3e3-e3e3-e3e3e3e3e3e3",
+  "name": "My Dataset",
+  "organization_id": "a1a1a1a1-a1a1-a1a1-a1a1-a1a1a1a1a1a1",
+  "tracking_id": "my-dataset-001",
+  "server_configuration": {
+    "EMBEDDING_MODEL_NAME": "text-embedding-3-small",
+    "EMBEDDING_SIZE": 1536,
+    "LLM_DEFAULT_MODEL": "gpt-3.5-turbo-1106",
+    "BM25_ENABLED": true,
+    "FULLTEXT_ENABLED": true,
+    "SEMANTIC_ENABLED": true,
+    "SYSTEM_PROMPT": "You are a helpful assistant",
+    "RAG_PROMPT": "Use the following retrieved documents to respond briefly and accurately:"
+  },
+  "created_at": "2024-01-15T10:30:00.000Z",
+  "updated_at": "2024-01-15T10:30:00.000Z",
+  "deleted": 0
+}
+```

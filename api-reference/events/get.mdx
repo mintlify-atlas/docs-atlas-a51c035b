@@ -1,0 +1,281 @@
+---
+title: "Get Events for Dataset"
+description: "Retrieve paginated events for your dataset with optional filtering by event type"
+---
+
+## Overview
+
+The Get Events endpoint allows you to retrieve events that have occurred in your dataset. Events track important operations like chunk uploads, updates, deletions, and failures. This endpoint supports pagination and filtering by event types.
+
+## Endpoint
+
+<CodeGroup>
+```bash cURL
+curl -X POST 'https://api.trieve.ai/api/dataset/events' \
+-H 'Authorization: Bearer YOUR_API_KEY' \
+-H 'TR-Dataset: YOUR_DATASET_ID' \
+-H 'Content-Type: application/json' \
+-d '{
+  "page": 1,
+  "page_size": 10,
+  "event_types": ["chunk_action_failed", "file_uploaded"]
+}'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const events = await trieve.getEventsForDataset({
+  page: 1,
+  page_size: 10,
+  event_types: ["chunk_action_failed", "file_uploaded"]
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveClient
+
+client = TrieveClient(
+    api_key="YOUR_API_KEY",
+    dataset_id="YOUR_DATASET_ID"
+)
+
+events = client.get_events(
+    page=1,
+    page_size=10,
+    event_types=["chunk_action_failed", "file_uploaded"]
+)
+```
+</CodeGroup>
+
+## Request Parameters
+
+<ParamField path="page" type="integer" default="1">
+  The page number to retrieve. Pagination starts at page 1.
+</ParamField>
+
+<ParamField path="page_size" type="integer" default="10">
+  The number of events to return per page. Maximum value depends on your plan.
+</ParamField>
+
+<ParamField path="event_types" type="array">
+  Array of event type strings to filter by. If not provided or empty, all event types will be returned.
+  
+  Available event types:
+  - `file_uploaded` - File successfully uploaded
+  - `file_upload_failed` - File upload failed
+  - `chunks_uploaded` - Chunks successfully uploaded
+  - `chunk_action_failed` - Chunk action failed
+  - `chunk_updated` - Chunk successfully updated
+  - `bulk_chunks_deleted` - Bulk deletion completed
+  - `chunk_update_failed` - Chunk update failed
+  - `dataset_delete_failed` - Dataset deletion failed
+  - `qdrant_upload_failed` - Vector upload to Qdrant failed
+  - `bulk_chunk_upload_failed` - Bulk chunk upload failed
+  - `group_chunks_updated` - Group chunks updated
+  - `group_chunks_action_failed` - Group chunks action failed
+  - `crawl_completed` - Web crawl completed
+  - `crawl_failed` - Web crawl failed
+  - `crawl_started` - Web crawl started
+  - `csv_jsonl_processing_failed` - CSV/JSONL processing failed
+  - `csv_jsonl_processing_checkpoint` - CSV/JSONL processing checkpoint
+  - `csv_jsonl_processing_completed` - CSV/JSONL processing completed
+  - `video_uploaded` - Video uploaded
+  - `pagefind_indexing_started` - Pagefind indexing started
+  - `pagefind_indexing_finished` - Pagefind indexing finished
+  - `etl_started` - ETL process started
+</ParamField>
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Your API key in the format: `Bearer YOUR_API_KEY`
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset ID or tracking_id to retrieve events for. We assume you intend to use an ID if the value is a valid UUID.
+</ParamField>
+
+## Response
+
+<ResponseField name="events" type="array">
+  Array of event objects for the requested page.
+  
+  <Expandable title="Event Object">
+    <ResponseField name="id" type="uuid" required>
+      Unique identifier for the event
+    </ResponseField>
+    
+    <ResponseField name="dataset_id" type="uuid" required>
+      The dataset this event belongs to
+    </ResponseField>
+    
+    <ResponseField name="organization_id" type="uuid">
+      The organization this event belongs to
+    </ResponseField>
+    
+    <ResponseField name="event_type" type="string" required>
+      The type of event (e.g., "chunk_action_failed", "file_uploaded")
+    </ResponseField>
+    
+    <ResponseField name="event_data" type="string" required>
+      JSON string containing detailed information about the event
+    </ResponseField>
+    
+    <ResponseField name="created_at" type="string" required>
+      ISO 8601 timestamp when the event was created
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="event_types" type="array">
+  Array of all distinct event types that exist in the dataset
+</ResponseField>
+
+<ResponseField name="page_count" type="integer">
+  Total number of pages available based on the current page_size
+</ResponseField>
+
+## Response Example
+
+```json
+{
+  "events": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "dataset_id": "123e4567-e89b-12d3-a456-426614174000",
+      "organization_id": "789e0123-e45b-67c8-d901-234567890123",
+      "event_type": "chunk_action_failed",
+      "event_data": "{\"error\":\"Chunk not found\",\"chunk_id\":\"abc123\"}",
+      "created_at": "2024-02-26T10:30:00Z"
+    },
+    {
+      "id": "660e9511-f30c-52e5-b827-557766551111",
+      "dataset_id": "123e4567-e89b-12d3-a456-426614174000",
+      "organization_id": "789e0123-e45b-67c8-d901-234567890123",
+      "event_type": "file_uploaded",
+      "event_data": "{\"filename\":\"document.pdf\",\"size\":1024000}",
+      "created_at": "2024-02-26T09:15:00Z"
+    }
+  ],
+  "event_types": [
+    "chunk_action_failed",
+    "chunk_updated",
+    "chunks_uploaded",
+    "file_uploaded"
+  ],
+  "page_count": 5
+}
+```
+
+## Error Responses
+
+<ResponseField name="400" type="error">
+  Bad request - typically due to invalid parameters or missing required fields
+  
+  ```json
+  {
+    "message": "Failed to get events for the dataset"
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401" type="error">
+  Unauthorized - invalid or missing API key
+</ResponseField>
+
+<ResponseField name="404" type="error">
+  Dataset not found - the specified dataset ID does not exist
+</ResponseField>
+
+## Use Cases
+
+<AccordionGroup>
+  <Accordion title="Monitor Failed Operations">
+    Filter by failure event types to identify and debug issues:
+    ```json
+    {
+      "event_types": [
+        "chunk_action_failed",
+        "file_upload_failed",
+        "qdrant_upload_failed"
+      ]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Track Data Ingestion Progress">
+    Monitor upload and processing events to track ingestion pipeline:
+    ```json
+    {
+      "event_types": [
+        "file_uploaded",
+        "chunks_uploaded",
+        "csv_jsonl_processing_completed"
+      ]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Audit Dataset Changes">
+    Review all update and deletion events for audit purposes:
+    ```json
+    {
+      "event_types": [
+        "chunk_updated",
+        "bulk_chunks_deleted",
+        "group_chunks_updated"
+      ]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor Web Crawling">
+    Track the progress of web crawling operations:
+    ```json
+    {
+      "event_types": [
+        "crawl_started",
+        "crawl_completed",
+        "crawl_failed"
+      ]
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Note>
+  **Pagination**: Use reasonable page sizes (10-100) to balance performance and completeness. Events are returned in reverse chronological order (newest first).
+</Note>
+
+<Tip>
+  **Event Filtering**: When monitoring specific operations, always filter by relevant event types to reduce response size and improve query performance.
+</Tip>
+
+<Warning>
+  **Event Data Parsing**: The `event_data` field is a JSON string that needs to be parsed. The structure varies by event type, so implement error handling when parsing.
+</Warning>
+
+## Related Resources
+
+<CardGroup cols={2}>
+  <Card title="Analytics Events" href="/analytics/events" icon="chart-line">
+    Learn about user analytics events
+  </Card>
+  <Card title="CTR Data" href="/analytics/ctr-data" icon="mouse-pointer">
+    Track click-through rates
+  </Card>
+  <Card title="Error Handling" href="/guides/error-handling" icon="triangle-exclamation">
+    Best practices for handling errors
+  </Card>
+  <Card title="Dataset Management" href="/datasets/overview" icon="database">
+    Managing your datasets
+  </Card>
+</CardGroup>

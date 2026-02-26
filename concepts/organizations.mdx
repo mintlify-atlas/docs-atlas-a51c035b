@@ -1,0 +1,473 @@
+---
+title: Organizations
+description: Manage teams, datasets, and billing with organizations in Trieve
+---
+
+## What is an Organization?
+
+An organization is the top-level entity in Trieve's hierarchy. It represents a company, team, or individual account and serves as the container for:
+
+- Datasets
+- Users and their roles
+- API keys
+- Billing and subscription plans
+- Usage limits and quotas
+
+Every dataset must belong to an organization, and all access control is managed at the organization level.
+
+## Why Organizations Matter
+
+Organizations provide the foundation for:
+
+1. **Multi-tenancy**: Separate data and access for different customers or teams
+2. **Access Control**: Role-based permissions (Owner, Admin, User)
+3. **Billing**: Single subscription and usage tracking per organization
+4. **Resource Limits**: Enforce dataset count, chunk count, and storage limits
+5. **Team Collaboration**: Multiple users can work within one organization
+
+## Organization Hierarchy
+
+```
+Organization
+  ├── Users (with roles)
+  ├── API Keys (with scopes)
+  ├── Subscription & Plan
+  └── Datasets
+       ├── Chunks
+       ├── Groups
+       └── Files
+```
+
+## Creating an Organization
+
+When you sign up, an organization is automatically created. You can create additional organizations:
+
+```typescript
+const org = await trieve.createOrganization({
+  name: "Acme Corporation"
+});
+```
+
+The user who creates the organization becomes its owner.
+
+<Note>
+Organization names must be unique across Trieve. Choose a descriptive name for your company or team.
+</Note>
+
+## User Roles
+
+Organizations use a role-based access control (RBAC) system:
+
+| Role | Permissions |
+|------|-------------|
+| **Owner** | Full control: manage users, billing, datasets, delete organization |
+| **Admin** | Create/delete datasets, manage chunks, view organization |
+| **User** | Read-only access to organization and datasets |
+
+From the source code at `server/src/data/models.rs`, roles are hierarchical - owners can do everything admins can, and admins can do everything users can.
+
+## Managing Users
+
+### View Organization Users
+
+```typescript
+const users = await trieve.getOrganizationUsers(orgId);
+
+users.forEach(user => {
+  console.log(`${user.email}: ${user.role}`);
+});
+```
+
+### Remove a User
+
+Only admins and owners can remove users (from `server/src/handlers/organization_handler.rs:368-384`):
+
+```typescript
+await trieve.removeUserFromOrganization({
+  organization_id: orgId,
+  user_id: userId
+});
+```
+
+<Warning>
+You cannot remove yourself from an organization. Another owner must remove you, or you can delete the organization entirely.
+</Warning>
+
+## API Keys
+
+Organizations can have multiple API keys with different permissions and scopes.
+
+### Creating API Keys
+
+From `server/src/handlers/organization_handler.rs:469-483`:
+
+```typescript
+const apiKey = await trieve.createOrganizationApiKey({
+  name: "Production API Key",
+  role: 1, // 0=read, 1=admin, 2=owner
+  dataset_ids: ["dataset-1", "dataset-2"], // Optional: limit to specific datasets
+  scopes: ["GET /api/chunk", "POST /api/chunk/search"], // Optional: limit routes
+  expires_at: "2025-12-31T23:59:59Z" // Optional expiration
+});
+
+console.log(apiKey.api_key); // Save this - it's only shown once
+```
+
+**Role Values:**
+- `0`: Read-only (search, retrieve)
+- `1`: Admin (create, update, delete)
+- `2`: Owner (full access including billing)
+
+### API Key Scopes
+
+Limit API keys to specific routes for security:
+
+```typescript
+const searchOnlyKey = await trieve.createOrganizationApiKey({
+  name: "Public Search Key",
+  role: 0,
+  scopes: [
+    "POST /api/chunk/search",
+    "POST /api/chunk/autocomplete"
+  ]
+});
+```
+
+This key can only be used for search endpoints, preventing unauthorized data modification.
+
+### Dataset-Scoped API Keys
+
+Restrict API keys to specific datasets:
+
+```typescript
+const key = await trieve.createOrganizationApiKey({
+  name: "Dataset A Key",
+  role: 1,
+  dataset_ids: ["dataset-a-id"]
+});
+```
+
+This key cannot access other datasets in the organization.
+
+### Managing API Keys
+
+```typescript
+// List all API keys
+const keys = await trieve.getOrganizationApiKeys({
+  limit: 10,
+  cursor: null
+});
+
+// Delete an API key
+await trieve.deleteOrganizationApiKey(keyId);
+```
+
+<Warning>
+API key values are only shown once during creation. Store them securely. If lost, delete the key and create a new one.
+</Warning>
+
+## Organization Settings
+
+### Update Organization
+
+Owners can update organization details:
+
+```typescript
+await trieve.updateOrganization({
+  name: "Acme Corp - Updated",
+  partner_configuration: {
+    referral_code: "PARTNER123",
+    custom_settings: {...}
+  }
+});
+```
+
+### Delete Organization
+
+Permanently delete an organization and all its data:
+
+```typescript
+await trieve.deleteOrganization(orgId);
+```
+
+<Warning>
+Deleting an organization:
+- Deletes all datasets
+- Deletes all chunks, groups, and files
+- Removes all users from the organization
+- Cancels the subscription
+- **Cannot be undone**
+</Warning>
+
+## Usage and Billing
+
+### View Organization Usage
+
+Track consumption against plan limits (from `server/src/handlers/organization_handler.rs:213-287`):
+
+```typescript
+const usage = await trieve.getOrganizationUsage({
+  organization_id: orgId,
+  date_range: {
+    start: "2024-02-01T00:00:00Z",
+    end: "2024-02-29T23:59:59Z"
+  }
+});
+
+console.log(usage);
+// {
+//   dataset_count: 5,
+//   user_count: 8,
+//   chunk_count: 150000,
+//   file_storage: 2048, // MB
+//   message_count: 1200,
+//   search_count: 45000,
+//   search_tokens: 3200000,
+//   message_tokens: 950000
+// }
+```
+
+Use this to:
+- Monitor usage against limits
+- Track API consumption
+- Identify when to upgrade
+- Bill customers (for SaaS)
+
+### Plan Limits
+
+Each organization has a plan with limits:
+
+- **Dataset count**: Maximum number of datasets
+- **Chunk count**: Total chunks across all datasets
+- **File storage**: Total MB of uploaded files
+- **Message count**: RAG chat messages per month
+- **API rate limits**: Requests per second
+
+From `server/src/handlers/dataset_handler.rs:180-193`, operations that would exceed limits return a `426 Upgrade Required` error.
+
+## Bulk Dataset Configuration
+
+Owners can update configuration across all datasets (from `server/src/handlers/organization_handler.rs:418-467`):
+
+```typescript
+await trieve.updateAllDatasetConfigs({
+  match_configuration: {
+    EMBEDDING_MODEL_NAME: "text-embedding-3-small"
+  },
+  to_configuration: {
+    EMBEDDING_MODEL_NAME: "text-embedding-3-large",
+    EMBEDDING_SIZE: 3072
+  }
+});
+```
+
+This updates only datasets matching the criteria, preserving other settings.
+
+**Use cases:**
+- Upgrade all datasets to new embedding model
+- Enable new features across organization
+- Standardize search configurations
+
+## Multi-Organization Patterns
+
+### SaaS Application (One Org Per Customer)
+
+```typescript
+// When customer signs up
+const customerOrg = await trieve.createOrganization({
+  name: `Customer: ${customerName}`
+});
+
+// Create their dataset
+const dataset = await trieve.createDataset({
+  dataset_name: "Customer Data",
+  // org_id set via TR-Organization header
+});
+
+// Store mapping in your database
+await db.customers.update(customerId, {
+  trieve_org_id: customerOrg.id,
+  trieve_dataset_id: dataset.id
+});
+```
+
+Benefits:
+- Complete data isolation
+- Per-customer billing via Trieve usage
+- Independent configurations
+
+### Internal Teams (Departments as Orgs)
+
+```typescript
+const engineering = await trieve.createOrganization({
+  name: "Engineering Team"
+});
+
+const sales = await trieve.createOrganization({
+  name: "Sales Team"
+});
+
+// Each team manages their own datasets and users
+```
+
+### Development Stages (Separate Orgs)
+
+```typescript
+const dev = await trieve.createOrganization({
+  name: "MyApp - Development"
+});
+
+const staging = await trieve.createOrganization({
+  name: "MyApp - Staging"
+});
+
+const prod = await trieve.createOrganization({
+  name: "MyApp - Production"
+});
+```
+
+Allows testing without affecting production, separate usage tracking.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive organization names">
+    Choose names that clearly identify the purpose:
+    - ✅ "Acme Corp - Production"
+    - ✅ "Customer: Big Enterprise Inc."
+    - ❌ "Org 1"
+    - ❌ "Test"
+  </Accordion>
+  
+  <Accordion title="Implement least-privilege API keys">
+    Create API keys with minimal necessary permissions:
+    ```typescript
+    // Frontend search (read-only, specific endpoints)
+    const searchKey = await createApiKey({
+      role: 0,
+      scopes: ["POST /api/chunk/search"]
+    });
+    
+    // Backend ingestion (admin, specific dataset)
+    const ingestKey = await createApiKey({
+      role: 1,
+      dataset_ids: [ingestDatasetId]
+    });
+    ```
+  </Accordion>
+  
+  <Accordion title="Monitor usage regularly">
+    Set up automated monitoring:
+    ```typescript
+    // Weekly usage check
+    const usage = await trieve.getOrganizationUsage(orgId);
+    
+    if (usage.chunk_count > plan.chunk_limit * 0.9) {
+      sendAlert("Approaching chunk limit");
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Rotate API keys periodically">
+    For security, rotate API keys every 90 days:
+    ```typescript
+    const newKey = await createApiKey({...});
+    // Deploy with new key
+    await deleteApiKey(oldKeyId);
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Multi-Tenant SaaS Setup
+
+```typescript
+class TrieveService {
+  async onCustomerSignup(customer) {
+    // Create organization for customer
+    const org = await trieve.createOrganization({
+      name: `Customer: ${customer.name}`
+    });
+    
+    // Create default dataset
+    const dataset = await trieve.createDataset({
+      dataset_name: "Main Dataset"
+    });
+    
+    // Create customer API key
+    const apiKey = await trieve.createApiKey({
+      name: "Customer API Key",
+      role: 1,
+      dataset_ids: [dataset.id]
+    });
+    
+    // Return to customer
+    return { org, dataset, apiKey };
+  }
+}
+```
+
+### Team Collaboration
+
+```typescript
+// Owner invites team member
+await trieve.inviteUserToOrganization({
+  email: "teammate@example.com",
+  role: 1 // Admin
+});
+
+// Team member accepts and gets access
+// Can now create/manage datasets in the organization
+```
+
+### Usage-Based Billing
+
+```typescript
+// Monthly billing job
+async function billCustomers() {
+  for (const customer of customers) {
+    const usage = await trieve.getOrganizationUsage({
+      organization_id: customer.trieve_org_id,
+      date_range: lastMonth
+    });
+    
+    const bill = calculateBill(usage, customer.plan);
+    await chargeCreditCard(customer, bill);
+  }
+}
+```
+
+## Security Considerations
+
+<AccordionGroup>
+  <Accordion title="Protect owner accounts">
+    - Use strong passwords and 2FA
+    - Limit number of owner users
+    - Regularly audit owner access
+  </Accordion>
+  
+  <Accordion title="Scope API keys appropriately">
+    - Never use owner-role keys in client-side code
+    - Use read-only keys for public endpoints
+    - Restrict dataset access when possible
+  </Accordion>
+  
+  <Accordion title="Monitor API key usage">
+    Track which keys are making requests to detect:
+    - Compromised keys
+    - Unused keys to delete
+    - Abnormal usage patterns
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create a Dataset" icon="database" href="/concepts/datasets">
+    Set up your first dataset in the organization
+  </Card>
+  <Card title="Manage API Keys" icon="key" href="/authentication">
+    Learn about API key management
+  </Card>
+</CardGroup>

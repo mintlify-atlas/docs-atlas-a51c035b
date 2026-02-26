@@ -1,0 +1,297 @@
+---
+title: "Search Chunks"
+description: "Search for chunks by semantic similarity, full-text similarity, or a combination of both. Results' chunk_html values will be modified with highlighting tags."
+---
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.trieve.ai/api/chunk/search \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How do I create a chunk?",
+    "search_type": "hybrid",
+    "page": 1,
+    "page_size": 10,
+    "filters": {
+      "must": [
+        {
+          "field": "tag_set",
+          "match": ["documentation"]
+        }
+      ]
+    },
+    "score_threshold": 0.5,
+    "highlight_options": {
+      "highlight_delimiters": ["<mark>", "</mark>"]
+    }
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const results = await trieve.searchChunks({
+  query: "How do I create a chunk?",
+  search_type: "hybrid",
+  page: 1,
+  page_size: 10,
+  filters: {
+    must: [
+      {
+        field: "tag_set",
+        match: ["documentation"]
+      }
+    ]
+  },
+  score_threshold: 0.5,
+  highlight_options: {
+    highlight_delimiters: ["<mark>", "</mark>"]
+  }
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="YOUR_API_KEY",
+  dataset_id="YOUR_DATASET_ID"
+)
+
+results = trieve.search_chunks(
+  query="How do I create a chunk?",
+  search_type="hybrid",
+  page=1,
+  page_size=10,
+  filters={
+    "must": [
+      {
+        "field": "tag_set",
+        "match": ["documentation"]
+      }
+    ]
+  },
+  score_threshold=0.5,
+  highlight_options={
+    "highlight_delimiters": ["<mark>", "</mark>"]
+  }
+)
+```
+</RequestExample>
+
+## Method and Path
+
+<CodeGroup>
+```http
+POST /api/chunk/search
+```
+</CodeGroup>
+
+## Authentication
+
+Requires API key with **readonly** role or higher for the specified dataset's organization.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="X-API-Version" type="string" optional>
+  The API version to use for this request. Defaults to V2 for orgs created after July 12, 2024 and V1 otherwise.
+</ParamField>
+
+## Request Body
+
+<ParamField body="query" type="string" required>
+  The search query text
+</ParamField>
+
+<ParamField body="search_type" type="string" required>
+  Type of search to perform. Options: `semantic`, `fulltext`, `hybrid`, `bm25`
+</ParamField>
+
+<ParamField body="page" type="number" optional default="1">
+  Page number for pagination
+</ParamField>
+
+<ParamField body="page_size" type="number" optional default="10">
+  Number of results per page (max 100)
+</ParamField>
+
+<ParamField body="filters" type="object" optional>
+  Filters to apply to the search results
+  <Expandable title="Filter Structure">
+    <ParamField body="must" type="array" optional>
+      All conditions in this array must be met
+    </ParamField>
+    <ParamField body="should" type="array" optional>
+      At least one condition in this array must be met
+    </ParamField>
+    <ParamField body="must_not" type="array" optional>
+      None of the conditions in this array can be met
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="score_threshold" type="number" optional>
+  Minimum score threshold for results (0.0 to 1.0)
+</ParamField>
+
+<ParamField body="slim_chunks" type="boolean" optional default="false">
+  Return minimal chunk data for faster response
+</ParamField>
+
+<ParamField body="get_total_pages" type="boolean" optional default="false">
+  Calculate and return total number of pages
+</ParamField>
+
+<ParamField body="highlight_options" type="object" optional>
+  Options for highlighting matched text in results
+  <Expandable title="properties">
+    <ParamField body="highlight_delimiters" type="array" optional>
+      Array with two strings: opening and closing tags for highlights. Default: ["<mark><b>", "</b></mark>"]
+    </ParamField>
+    <ParamField body="highlight_results" type="boolean" optional default="true">
+      Whether to highlight results
+    </ParamField>
+    <ParamField body="highlight_max_length" type="number" optional>
+      Maximum length of highlighted text
+    </ParamField>
+    <ParamField body="highlight_max_num" type="number" optional>
+      Maximum number of highlights per chunk
+    </ParamField>
+    <ParamField body="highlight_window" type="number" optional>
+      Number of words to include around the highlight
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sort_options" type="object" optional>
+  Options for sorting results
+  <Expandable title="properties">
+    <ParamField body="sort_by" type="string" optional>
+      Field to sort by. Options: `num_value`, `time_stamp`, `metadata.{key}`
+    </ParamField>
+    <ParamField body="order" type="string" optional>
+      Sort order. Options: `asc`, `desc`
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="typo_options" type="object" optional>
+  Options for typo tolerance in fulltext search
+  <Expandable title="properties">
+    <ParamField body="correct_typos" type="boolean" optional default="true">
+      Enable typo correction
+    </ParamField>
+    <ParamField body="one_typo_word_range" type="object" optional>
+      Word length range for single typo tolerance
+    </ParamField>
+    <ParamField body="two_typo_word_range" type="object" optional>
+      Word length range for double typo tolerance
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="recency_bias" type="number" optional>
+  Bias recent chunks higher in results (0.0 to 1.0)
+</ParamField>
+
+<ParamField body="use_quote_negated_terms" type="boolean" optional default="false">
+  Parse special operators like quotes and minus signs in the query
+</ParamField>
+
+<ParamField body="remove_stop_words" type="boolean" optional default="false">
+  Remove common stop words from the query
+</ParamField>
+
+<ParamField body="scoring_options" type="object" optional>
+  Options to modify query vector scoring
+  <Expandable title="properties">
+    <ParamField body="fulltext_boost" type="object" optional>
+      Boost phrases in fulltext search
+    </ParamField>
+    <ParamField body="semantic_boost" type="object" optional>
+      Move query vector toward specified phrase
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+<ResponseField name="chunks" type="array">
+  Array of matching chunks
+  <Expandable title="Chunk Object">
+    <ResponseField name="chunk" type="object">
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          Unique identifier for the chunk
+        </ResponseField>
+        <ResponseField name="chunk_html" type="string">
+          HTML content with highlighting applied
+        </ResponseField>
+        <ResponseField name="link" type="string">
+          Link associated with the chunk
+        </ResponseField>
+        <ResponseField name="tag_set" type="array">
+          Tags associated with the chunk
+        </ResponseField>
+        <ResponseField name="metadata" type="object">
+          Metadata object
+        </ResponseField>
+        <ResponseField name="tracking_id" type="string">
+          Tracking ID
+        </ResponseField>
+        <ResponseField name="time_stamp" type="string">
+          Timestamp
+        </ResponseField>
+        <ResponseField name="weight" type="number">
+          Weight for search biasing
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="score" type="number">
+      Relevance score (0.0 to 1.0)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="total_chunk_pages" type="number">
+  Total number of pages (only if get_total_pages is true)
+</ResponseField>
+
+## Status Codes
+
+<ResponseField name="200" type="Success">
+  Search results returned successfully
+</ResponseField>
+
+<ResponseField name="400" type="Error">
+  Service error relating to searching (invalid parameters, etc.)
+</ResponseField>
+
+## Search Types
+
+### Semantic Search
+Uses dense vector embeddings to find semantically similar chunks. Best for conceptual matches.
+
+### Fulltext Search
+Uses SPLADE sparse vectors for keyword-based search. Best for exact phrase or keyword matches.
+
+### Hybrid Search
+Combines semantic and fulltext search, then re-ranks using a cross encoder model. Best for most use cases.
+
+### BM25 Search
+Traditional BM25 keyword search. Fast and effective for exact keyword matching.

@@ -1,0 +1,285 @@
+---
+title: "Edit Message"
+description: "Edit a message and regenerate subsequent responses"
+---
+
+## PUT /api/message
+
+Edit a message at a specific position in a topic's conversation. This deletes the specified message and all messages after it, then creates a new message and generates a fresh assistant response.
+
+<Warning>
+  This operation is destructive. All messages after the edited message in the sort order will be permanently deleted.
+</Warning>
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset ID or tracking_id to use for the request
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  API key with admin role for the dataset's organization
+</ParamField>
+
+### Body
+
+<ParamField body="topic_id" type="string" required>
+  The ID of the topic containing the message to edit
+</ParamField>
+
+<ParamField body="message_sort_order" type="integer" required>
+  The sort order of the message to edit within the topic
+</ParamField>
+
+<ParamField body="new_message_content" type="string">
+  The new content to replace the old message content with. Required if `audio_input` is not provided.
+</ParamField>
+
+<ParamField body="audio_input" type="string">
+  Base64 encoded audio input to transcribe and use as the new message content
+</ParamField>
+
+<ParamField body="image_urls" type="array">
+  Array of image URLs to attach to the edited message
+</ParamField>
+
+<ParamField body="user_id" type="string">
+  The ID of the user making the request. Used to track user interactions with RAG results.
+</ParamField>
+
+#### Search Configuration
+
+<ParamField body="search_query" type="string">
+  The search query to use for RAG. If not specified, defaults to the edited message or HyDE if enabled.
+</ParamField>
+
+<ParamField body="search_type" type="string" default="hybrid">
+  Search method: `semantic`, `fulltext`, `hybrid`, or `bm25`
+</ParamField>
+
+<ParamField body="page_size" type="integer">
+  Number of chunks to fetch during RAG. If 0, no search will be performed.
+</ParamField>
+
+<ParamField body="score_threshold" type="number" default={0.0}>
+  Filter out chunks with a score below this threshold
+</ParamField>
+
+<ParamField body="use_group_search" type="boolean" default={false}>
+  If true, search using the `search_over_groups` API
+</ParamField>
+
+<ParamField body="use_agentic_search" type="boolean" default={false}>
+  If true, use LLM tool calling for agentic search
+</ParamField>
+
+<ParamField body="filters" type="object">
+  JSON object to filter chunks by metadata
+</ParamField>
+
+<ParamField body="sort_options" type="object">
+  Options to rerank chunks in the result set
+</ParamField>
+
+<ParamField body="highlight_options" type="object">
+  Options to highlight chunks in the result set
+</ParamField>
+
+<ParamField body="typo_options" type="object">
+  Options to handle typos in the search query
+</ParamField>
+
+<ParamField body="use_quote_negated_terms" type="boolean" default={false}>
+  Parse quoted and `-` prefixed words as required and negated terms
+</ParamField>
+
+<ParamField body="remove_stop_words" type="boolean" default={false}>
+  Remove stop words from the query
+</ParamField>
+
+#### LLM Configuration
+
+<ParamField body="llm_options" type="object">
+  LLM options for the completion. If not specified, defaults to dataset's LLM options.
+  
+  - `temperature` (number): Sampling temperature between 0 and 2. Default is 0.5.
+  - `frequency_penalty` (number): Penalty between -2.0 and 2.0. Default is 0.7.
+  - `presence_penalty` (number): Penalty between -2.0 and 2.0. Default is 0.7.
+  - `stop_tokens` (array): Up to 4 sequences where the API will stop generating tokens
+  - `max_tokens` (integer): Maximum tokens to generate
+  - `system_prompt` (string): Override the dataset's system prompt
+  - `stream_response` (boolean): Whether to stream the response. Default is true.
+  - `completion_first` (boolean): Stream completion before chunks. Default is false.
+</ParamField>
+
+<ParamField body="model" type="string">
+  Model name to use for completion. If not specified, uses the dataset's default model.
+</ParamField>
+
+<ParamField body="context_options" type="object">
+  Options for context window configuration
+</ParamField>
+
+<ParamField body="concat_user_messages_query" type="boolean" default={false}>
+  If true, concatenate all user messages as the search query
+</ParamField>
+
+<ParamField body="number_of_messages_to_include" type="integer" default={10}>
+  Number of messages to include in the context window
+</ParamField>
+
+<ParamField body="rag_context" type="string">
+  Override how chunks are placed into the context window
+</ParamField>
+
+<ParamField body="no_result_message" type="string">
+  Message to return when no chunks are found above the score threshold
+</ParamField>
+
+<ParamField body="only_include_docs_used" type="boolean">
+  If true, only include the docs that were used in the completion
+</ParamField>
+
+<ParamField body="currency" type="string" default="$">
+  Currency symbol to use for the completion
+</ParamField>
+
+<ParamField body="metadata" type="object">
+  Metadata to associate with the event created from this request
+</ParamField>
+
+### Response
+
+<ResponseField name="response" type="stream">
+  An HTTP stream where chunks are sent first if RAG is enabled, followed by `||`, then the assistant message. The structure is `[chunks]||message`.
+</ResponseField>
+
+<ResponseField name="TR-QueryID" type="string">
+  Query ID header used for tracking analytics
+</ResponseField>
+
+### Example Request
+
+```bash cURL
+curl -X PUT "https://api.trieve.ai/api/message" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: ********-****-****-****-************" \
+  -d '{
+    "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+    "message_sort_order": 3,
+    "new_message_content": "What are the best practices for semantic search?",
+    "search_type": "semantic",
+    "page_size": 12
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "********-****-****-****-************"
+});
+
+const edited = await trieve.editMessage({
+  topic_id: "550e8400-e29b-41d4-a716-446655440000",
+  message_sort_order: 3,
+  new_message_content: "What are the best practices for semantic search?",
+  search_type: "semantic",
+  page_size: 12
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="tr-********************************",
+  dataset_id="********-****-****-****-************"
+)
+
+edited = trieve.edit_message(
+  topic_id="550e8400-e29b-41d4-a716-446655440000",
+  message_sort_order=3,
+  new_message_content="What are the best practices for semantic search?",
+  search_type="semantic",
+  page_size=12
+)
+```
+
+### How Message Editing Works
+
+1. **Locate Message:** Find the message at the specified `message_sort_order` in the topic
+2. **Delete Messages:** Delete the message and all subsequent messages (higher sort order)
+3. **Create New Message:** Insert the new message content at that position
+4. **Generate Response:** Create a new assistant response using RAG with the updated context
+
+### Example Scenario
+
+**Before editing:**
+```
+1. User: "What is RAG?"
+2. Assistant: "RAG stands for..."
+3. User: "How does it work?"
+4. Assistant: "RAG works by..."
+5. User: "Can you give examples?"
+6. Assistant: "Here are some examples..."
+```
+
+**Edit message at sort_order 3:**
+```json
+{
+  "topic_id": "...",
+  "message_sort_order": 3,
+  "new_message_content": "What are the components of RAG?"
+}
+```
+
+**After editing:**
+```
+1. User: "What is RAG?"
+2. Assistant: "RAG stands for..."
+3. User: "What are the components of RAG?"
+4. Assistant: "The main components of RAG are..."
+```
+
+Messages 4, 5, and 6 from the original conversation are deleted.
+
+### Use Cases
+
+**Correct a Typo**
+```json
+{
+  "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+  "message_sort_order": 5,
+  "new_message_content": "What are vector databases?"
+}
+```
+
+**Change Question Direction**
+```json
+{
+  "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+  "message_sort_order": 3,
+  "new_message_content": "How does semantic search differ from keyword search?",
+  "search_type": "semantic"
+}
+```
+
+**Add Context with Images**
+```json
+{
+  "topic_id": "550e8400-e29b-41d4-a716-446655440000",
+  "message_sort_order": 2,
+  "new_message_content": "What's in this diagram?",
+  "image_urls": ["https://example.com/architecture.png"]
+}
+```
+
+### Notes
+
+- This is a destructive operation that cannot be undone
+- All messages after the edited message are permanently deleted
+- The response is always streamed (check chat UI for example of processing the stream)
+- Sort order starts at 1 for the first message in a topic

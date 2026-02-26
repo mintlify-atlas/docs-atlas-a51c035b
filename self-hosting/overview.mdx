@@ -1,0 +1,102 @@
+---
+title: 'Self-Hosting Overview'
+description: 'Learn how to deploy and manage Trieve in your own infrastructure'
+---
+
+## Introduction
+
+Trieve can be fully self-hosted in your VPC or on-premises infrastructure, giving you complete control over your data and deployment. This guide covers the different deployment options available.
+
+## Deployment Options
+
+Trieve supports multiple deployment methods to fit your infrastructure needs:
+
+<CardGroup cols={2}>
+  <Card title="Docker Compose" icon="docker" href="/self-hosting/docker-compose">
+    Quick local development or small production deployments
+  </Card>
+  <Card title="Kubernetes" icon="dharmachakra" href="/self-hosting/kubernetes">
+    Production-grade deployments with Helm charts
+  </Card>
+</CardGroup>
+
+## Architecture Components
+
+A complete Trieve deployment consists of the following services:
+
+### Core Services
+
+- **Server** - Main API server handling requests
+- **Workers** - Background job processors for ingestion, deletion, and file processing
+- **Dashboard** - Administrative web interface
+- **Search UI** - Search interface
+- **Chat UI** - Conversational interface
+
+### Data Stores
+
+- **PostgreSQL** - Primary relational database for metadata
+- **Qdrant** - Vector database for embeddings and similarity search
+- **Redis** - Cache and job queue
+- **ClickHouse** - Analytics database
+- **S3/MinIO** - Object storage for files
+
+### Supporting Services
+
+- **Keycloak** - Identity and access management (OIDC provider)
+- **Tika** - Document parsing and text extraction
+- **Embedding Services** - Text embedding models (Jina, SPLADE, BGE-M3, Reranker)
+
+## System Requirements
+
+### Minimum Requirements (Development)
+
+- **CPU**: 4 cores
+- **RAM**: 16 GB
+- **Storage**: 50 GB
+- **OS**: Linux, macOS, or Windows with WSL2
+
+### Recommended Requirements (Production)
+
+- **CPU**: 8+ cores
+- **RAM**: 32+ GB
+- **Storage**: 200+ GB SSD
+- **GPU**: Optional - NVIDIA T4 or L4 for faster embedding generation
+- **Network**: High bandwidth for API traffic
+
+## Cloud Provider Support
+
+Trieve includes Terraform configurations for automated deployment on:
+
+- **Google Cloud Platform (GCP)** - GKE with GPU node pools
+- **Amazon Web Services (AWS)** - EKS deployment
+- **Microsoft Azure** - AKS deployment
+
+## Next Steps
+
+<Steps>
+<Step title="Choose your deployment method">
+Select [Docker Compose](/self-hosting/docker-compose) for quick setup or [Kubernetes](/self-hosting/kubernetes) for production.
+</Step>
+
+<Step title="Configure environment variables">
+Review the [Configuration](/self-hosting/configuration) guide to set up your environment.
+</Step>
+
+<Step title="Deploy Trieve">
+Follow the deployment guide for your chosen method.
+</Step>
+</Steps>
+
+## Support
+
+If you need help with self-hosting:
+
+- Join the [Discord community](https://discord.gg/eBJXXZDB8z)
+- Join the [Matrix chat](https://matrix.to/#/#trieve-general:trieve.ai)
+- Schedule a call at [cal.com/nick.k/meet](https://cal.com/nick.k/meet)
+- Call us at 628-222-4090
+- Create a [GitHub issue](https://github.com/devflowinc/trieve/issues)
+
+<Info>
+Professional services are available for enterprise deployments and custom requirements.
+</Info>

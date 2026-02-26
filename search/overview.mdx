@@ -1,0 +1,201 @@
+---
+title: Search Overview
+description: Comprehensive guide to Trieve's powerful search capabilities
+---
+
+Trieve offers state-of-the-art search functionality that combines multiple search methodologies to deliver highly relevant results. The platform supports semantic search, full-text search, hybrid search, and BM25 keyword search.
+
+## Search Methods
+
+Trieve provides four distinct search methods, each optimized for different use cases:
+
+<CardGroup cols={2}>
+  <Card title="Semantic Search" icon="brain" href="/search/semantic-search">
+    Vector-based similarity search using dense embeddings for conceptual matching
+  </Card>
+  <Card title="Full-Text Search" icon="magnifying-glass" href="/search/full-text-search">
+    SPLADE-based sparse vector search for exact term matching
+  </Card>
+  <Card title="Hybrid Search" icon="layer-group" href="/search/hybrid-search">
+    Combines semantic and full-text with cross-encoder re-ranking for best results
+  </Card>
+  <Card title="BM25 Search" icon="ranking-star" href="/search/filters">
+    Traditional keyword search with BM25 scoring algorithm
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="Vector Database Integration">
+    Trieve uses Qdrant as its vector database backend, providing:
+    - Fast approximate nearest neighbor search with HNSW indexing
+    - Support for multiple vector types (dense and sparse)
+    - Efficient filtering and payload storage
+    - Horizontal scalability
+  </Accordion>
+
+  <Accordion title="Advanced Filtering">
+    Apply complex filters to narrow search results:
+    - Metadata filtering with must, should, and must_not conditions
+    - Numeric range filters
+    - Date range filters
+    - Tag-based filtering with HNSW indices
+    - Geographic location filters (bounding box, radius, polygon)
+    - Boolean field matching
+  </Accordion>
+
+  <Accordion title="Re-ranking Options">
+    Multiple strategies to optimize result relevance:
+    - Cross-encoder re-ranking for hybrid search
+    - MMR (Maximal Marginal Relevance) for diversity
+    - Custom scoring with weights and biases
+    - Field-based sorting
+  </Accordion>
+
+  <Accordion title="Performance Optimization">
+    - Slim chunks mode to reduce payload size
+    - Content-only responses for minimal latency
+    - Configurable page sizes
+    - Query caching and typo correction
+  </Accordion>
+</AccordionGroup>
+
+## Search Type Parameter
+
+The `search_type` parameter determines which search method to use:
+
+```json
+{
+  "search_type": "hybrid",  // Options: "semantic", "fulltext", "hybrid", "bm25"
+  "query": "How does vector search work?",
+  "page_size": 10
+}
+```
+
+<Note>
+  **Default Behavior**: If no `search_type` is specified, Trieve defaults to `hybrid` search, which provides the best balance of precision and recall.
+</Note>
+
+## Quick Start Example
+
+Here's a basic search request:
+
+<CodeGroup>
+```javascript JavaScript
+const response = await fetch('https://api.trieve.ai/api/chunk/search', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'TR-Dataset': 'YOUR_DATASET_ID'
+  },
+  body: JSON.stringify({
+    search_type: 'hybrid',
+    query: 'machine learning algorithms',
+    page_size: 10,
+    filters: {
+      must: [
+        {
+          field: 'metadata.category',
+          match_any: ['AI', 'ML']
+        }
+      ]
+    }
+  })
+});
+
+const data = await response.json();
+console.log(data.chunks);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    'https://api.trieve.ai/api/chunk/search',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer YOUR_API_KEY',
+        'TR-Dataset': 'YOUR_DATASET_ID'
+    },
+    json={
+        'search_type': 'hybrid',
+        'query': 'machine learning algorithms',
+        'page_size': 10,
+        'filters': {
+            'must': [
+                {
+                    'field': 'metadata.category',
+                    'match_any': ['AI', 'ML']
+                }
+            ]
+        }
+    }
+)
+
+data = response.json()
+print(data['chunks'])
+```
+
+```bash cURL
+curl -X POST https://api.trieve.ai/api/chunk/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -d '{
+    "search_type": "hybrid",
+    "query": "machine learning algorithms",
+    "page_size": 10,
+    "filters": {
+      "must": [
+        {
+          "field": "metadata.category",
+          "match_any": ["AI", "ML"]
+        }
+      ]
+    }
+  }'
+```
+</CodeGroup>
+
+## Response Format
+
+Search responses follow this structure:
+
+```json
+{
+  "id": "search-uuid",
+  "chunks": [
+    {
+      "chunk": {
+        "id": "chunk-uuid",
+        "content": "Chunk content here...",
+        "link": "https://example.com",
+        "metadata": {...},
+        "created_at": "2024-01-01T00:00:00Z"
+      },
+      "score": 0.95
+    }
+  ],
+  "corrected_query": null,
+  "total_pages": 5
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Semantic Search" icon="brain" href="/search/semantic-search">
+    Learn about vector embeddings and semantic similarity
+  </Card>
+  <Card title="Filters" icon="filter" href="/search/filters">
+    Master advanced filtering techniques
+  </Card>
+  <Card title="Hybrid Search" icon="layer-group" href="/search/hybrid-search">
+    Combine methods for optimal results
+  </Card>
+  <Card title="Recommendations" icon="sparkles" href="/search/recommendations">
+    Build recommendation systems
+  </Card>
+</CardGroup>

@@ -1,0 +1,871 @@
+---
+title: Search Filters
+description: Advanced filtering techniques for precise search results in Trieve
+---
+
+Trieve provides powerful filtering capabilities to narrow search results based on metadata, tags, dates, numeric values, locations, and more. Filters use a flexible JSON structure with `must`, `should`, and `must_not` conditions.
+
+## Filter Structure
+
+Filters follow a boolean logic structure:
+
+```javascript
+{
+  "filters": {
+    "must": [],      // All conditions must be true (AND logic)
+    "should": [],    // At least one condition must be true (OR logic)
+    "must_not": []   // None of these conditions can be true (NOT logic)
+  }
+}
+```
+
+<Info>
+  **Condition types** can be either:
+  - **FieldCondition**: Filter by chunk fields and metadata
+  - **HasChunkIDCondition**: Filter by specific chunk IDs or tracking IDs
+</Info>
+
+## Field Conditions
+
+### Basic Structure
+
+```javascript
+{
+  "field": "metadata.category",
+  "match_any": ["value1", "value2"],  // OR matching
+  "match_all": ["value1", "value2"]   // AND matching
+}
+```
+
+### Available Fields
+
+Common filterable fields:
+
+| Field | Type | Description | Indexed |
+|-------|------|-------------|----------|
+| `tag_set` | Array[String] | Tags assigned to chunk | HNSW ✓ |
+| `link` | String | URL or reference link | No |
+| `num_value` | Number | Arbitrary numeric value | HNSW ✓ |
+| `time_stamp` | DateTime | ISO 8601 timestamp | Yes |
+| `location` | GeoPoint | Lat/lon coordinates | Yes |
+| `group_ids` | Array[UUID] | Group membership | HNSW ✓ |
+| `metadata.*` | Any | Custom metadata fields | No |
+| `group_metadata.*` | Any | Group metadata fields | No |
+| `group_tag_set` | Array[String] | Group tags | Yes |
+
+<Note>
+  **HNSW indexed fields** (tag_set, num_value, group_ids) have no performance penalty for filtering. Metadata filtering has a performance cost.
+</Note>
+
+## Match Conditions
+
+### Match Any (OR Logic)
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_any": ["tutorial", "guide", "howto"]
+      }
+    ]
+  }
+}
+```
+
+Returns chunks with **at least one** of the specified tags.
+
+### Match All (AND Logic)
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_all": ["python", "advanced", "tutorial"]
+      }
+    ]
+  }
+}
+```
+
+Returns chunks with **all** specified tags.
+
+<Tabs>
+  <Tab title="Match Any Example">
+    ```javascript
+    // Chunks with ANY of these categories
+    {
+      "field": "metadata.category",
+      "match_any": ["AI", "ML", "Data Science"]
+    }
+    ```
+    
+    **Returns**: Chunks in AI **OR** ML **OR** Data Science
+  </Tab>
+  
+  <Tab title="Match All Example">
+    ```javascript
+    // Chunks with ALL of these tags
+    {
+      "field": "tag_set",
+      "match_all": ["verified", "featured", "2024"]
+    }
+    ```
+    
+    **Returns**: Only chunks tagged with verified **AND** featured **AND** 2024
+  </Tab>
+</Tabs>
+
+## Range Filters
+
+Filter numeric fields by range:
+
+```javascript
+{
+  "field": "num_value",
+  "range": {
+    "gte": 10,   // Greater than or equal
+    "lte": 100,  // Less than or equal
+    "gt": 10,    // Greater than (exclusive)
+    "lt": 100    // Less than (exclusive)
+  }
+}
+```
+
+### Practical Examples
+
+<CodeGroup>
+```javascript Price Range
+{
+  "filters": {
+    "must": [
+      {
+        "field": "num_value",  // Price stored in num_value
+        "range": {
+          "gte": 50,
+          "lte": 200
+        }
+      }
+    ]
+  }
+}
+```
+
+```javascript Rating Filter
+{
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.rating",
+        "range": {
+          "gte": 4.0
+        }
+      }
+    ]
+  }
+}
+```
+
+```javascript Quantity
+{
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.stock",
+        "range": {
+          "gt": 0  // In stock
+        }
+      }
+    ]
+  }
+}
+```
+</CodeGroup>
+
+## Date Range Filters
+
+Filter by date ranges using ISO 8601 timestamps:
+
+```javascript
+{
+  "field": "time_stamp",
+  "date_range": {
+    "gte": "2024-01-01T00:00:00",
+    "lte": "2024-12-31T23:59:59",
+    "gt": "2024-01-01T00:00:00",   // Exclusive
+    "lt": "2024-12-31T23:59:59"    // Exclusive
+  }
+}
+```
+
+### Common Date Patterns
+
+<Tabs>
+  <Tab title="Last 30 Days">
+    ```javascript
+    {
+      "field": "time_stamp",
+      "date_range": {
+        "gte": new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Specific Year">
+    ```javascript
+    {
+      "field": "time_stamp",
+      "date_range": {
+        "gte": "2024-01-01T00:00:00",
+        "lt": "2025-01-01T00:00:00"
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Before Date">
+    ```javascript
+    {
+      "field": "time_stamp",
+      "date_range": {
+        "lt": "2024-06-01T00:00:00"
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="After Date">
+    ```javascript
+    {
+      "field": "time_stamp",
+      "date_range": {
+        "gte": "2024-01-01T00:00:00"
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+  **Timezone handling**: Timestamps are stored and compared in UTC. Ensure your ISO 8601 strings are properly formatted without timezone suffixes for consistent behavior.
+</Warning>
+
+## Boolean Filters
+
+Filter by boolean metadata values:
+
+```javascript
+{
+  "field": "metadata.is_featured",
+  "boolean": true
+}
+```
+
+### Examples
+
+```javascript
+// Show only published content
+{
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.published",
+        "boolean": true
+      }
+    ]
+  }
+}
+
+// Exclude deprecated items
+{
+  "filters": {
+    "must_not": [
+      {
+        "field": "metadata.deprecated",
+        "boolean": true
+      }
+    ]
+  }
+}
+```
+
+## Geographic Filters
+
+### Bounding Box
+
+Find chunks within a rectangular area:
+
+```javascript
+{
+  "field": "location",
+  "geo_bounding_box": {
+    "top_left": {
+      "lat": 40.8,
+      "lon": -74.0
+    },
+    "bottom_right": {
+      "lat": 40.7,
+      "lon": -73.9
+    }
+  }
+}
+```
+
+### Radius Search
+
+Find chunks within a radius (in meters):
+
+```javascript
+{
+  "field": "location",
+  "geo_radius": {
+    "center": {
+      "lat": 40.7128,
+      "lon": -74.0060
+    },
+    "radius": 5000  // 5km radius
+  }
+}
+```
+
+### Polygon Search
+
+Find chunks within an irregular boundary:
+
+```javascript
+{
+  "field": "location",
+  "geo_polygon": {
+    "exterior": [
+      { "lat": 40.7, "lon": -74.0 },
+      { "lat": 40.8, "lon": -74.0 },
+      { "lat": 40.8, "lon": -73.9 },
+      { "lat": 40.7, "lon": -73.9 },
+      { "lat": 40.7, "lon": -74.0 }  // Must close the loop
+    ],
+    "interior": []  // Optional holes in the polygon
+  }
+}
+```
+
+<Note>
+  **Polygon requirements**:
+  - First and last points must be identical (close the loop)
+  - Points must be ordered clockwise or counterclockwise consistently
+  - Optional interior arrays define holes
+</Note>
+
+## Metadata Filtering
+
+### Accessing Nested Metadata
+
+Use dot notation to access nested fields:
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.product.category",
+        "match_any": ["electronics", "computers"]
+      },
+      {
+        "field": "metadata.product.price",
+        "range": {
+          "lte": 1000
+        }
+      }
+    ]
+  }
+}
+```
+
+### Metadata Filter Examples
+
+<Tabs>
+  <Tab title="E-commerce">
+    ```javascript
+    {
+      "filters": {
+        "must": [
+          {
+            "field": "metadata.category",
+            "match_any": ["laptops", "tablets"]
+          },
+          {
+            "field": "metadata.brand",
+            "match_any": ["Apple", "Dell", "HP"]
+          },
+          {
+            "field": "metadata.price",
+            "range": { "gte": 500, "lte": 2000 }
+          },
+          {
+            "field": "metadata.in_stock",
+            "boolean": true
+          }
+        ]
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Content Management">
+    ```javascript
+    {
+      "filters": {
+        "must": [
+          {
+            "field": "metadata.content_type",
+            "match_any": ["article", "blog"]
+          },
+          {
+            "field": "metadata.author",
+            "match_any": ["Jane Doe", "John Smith"]
+          },
+          {
+            "field": "time_stamp",
+            "date_range": {
+              "gte": "2024-01-01T00:00:00"
+            }
+          }
+        ],
+        "must_not": [
+          {
+            "field": "metadata.status",
+            "match_any": ["draft", "archived"]
+          }
+        ]
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Documentation">
+    ```javascript
+    {
+      "filters": {
+        "must": [
+          {
+            "field": "tag_set",
+            "match_all": ["api", "v2"]
+          },
+          {
+            "field": "metadata.language",
+            "match_any": ["javascript", "typescript"]
+          }
+        ],
+        "must_not": [
+          {
+            "field": "tag_set",
+            "match_any": ["deprecated"]
+          }
+        ]
+      }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Group Filters
+
+### Filter by Group IDs
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "group_ids",
+        "match_any": [
+          "d290f1ee-6c54-4b01-90e6-d701748f0851",
+          "a123b456-7c89-0d12-34e5-678901234567"
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Filter by Group Tracking IDs
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "group_tracking_ids",
+        "match_any": ["project-alpha", "project-beta"]
+      }
+    ]
+  }
+}
+```
+
+<Info>
+  **Group tracking IDs** are automatically converted to group IDs internally for efficient querying.
+</Info>
+
+### Group Metadata Filters
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "group_metadata.project_status",
+        "match_any": ["active"]
+      }
+    ]
+  }
+}
+```
+
+### Group Tag Filters
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "group_tag_set",
+        "match_any": ["priority", "featured"]
+      }
+    ]
+  }
+}
+```
+
+## Chunk ID Filters
+
+Filter by specific chunk IDs or tracking IDs:
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "ids": [
+          "d290f1ee-6c54-4b01-90e6-d701748f0851",
+          "a123b456-7c89-0d12-34e5-678901234567"
+        ]
+      }
+    ]
+  }
+}
+
+// Or by tracking IDs
+{
+  "filters": {
+    "must": [
+      {
+        "tracking_ids": ["chunk-001", "chunk-002"]
+      }
+    ]
+  }
+}
+```
+
+<Warning>
+  **Important**: Chunk ID filters cannot be used in `must_not` conditions. Use them only in `must` or `should`.
+</Warning>
+
+## Complex Filter Combinations
+
+### Example 1: E-commerce Product Search
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "wireless headphones",
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.category",
+        "match_any": ["audio", "electronics"]
+      },
+      {
+        "field": "num_value",  // Price
+        "range": { "gte": 50, "lte": 300 }
+      },
+      {
+        "field": "metadata.in_stock",
+        "boolean": true
+      },
+      {
+        "field": "metadata.rating",
+        "range": { "gte": 4.0 }
+      }
+    ],
+    "should": [
+      {
+        "field": "tag_set",
+        "match_any": ["bestseller", "featured"]
+      }
+    ],
+    "must_not": [
+      {
+        "field": "metadata.condition",
+        "match_any": ["refurbished", "used"]
+      }
+    ]
+  }
+}
+```
+
+### Example 2: Content Recommendation
+
+```javascript
+{
+  "search_type": "semantic",
+  "query": "machine learning tutorials",
+  "filters": {
+    "must": [
+      {
+        "field": "tag_set",
+        "match_any": ["tutorial", "guide", "howto"]
+      },
+      {
+        "field": "time_stamp",
+        "date_range": {
+          "gte": "2023-01-01T00:00:00"
+        }
+      },
+      {
+        "field": "metadata.language",
+        "match_any": ["english"]
+      }
+    ],
+    "should": [
+      {
+        "field": "metadata.difficulty",
+        "match_any": ["beginner", "intermediate"]
+      },
+      {
+        "field": "tag_set",
+        "match_any": ["python", "pytorch", "tensorflow"]
+      }
+    ],
+    "must_not": [
+      {
+        "field": "tag_set",
+        "match_any": ["archived", "deprecated"]
+      }
+    ]
+  }
+}
+```
+
+### Example 3: Location-Based Search
+
+```javascript
+{
+  "search_type": "hybrid",
+  "query": "coffee shops",
+  "filters": {
+    "must": [
+      {
+        "field": "location",
+        "geo_radius": {
+          "center": {
+            "lat": 40.7128,
+            "lon": -74.0060
+          },
+          "radius": 2000  // 2km
+        }
+      },
+      {
+        "field": "metadata.rating",
+        "range": { "gte": 4.0 }
+      },
+      {
+        "field": "metadata.open_now",
+        "boolean": true
+      }
+    ],
+    "should": [
+      {
+        "field": "tag_set",
+        "match_any": ["wifi", "outdoor-seating"]
+      }
+    ]
+  }
+}
+```
+
+## Performance Considerations
+
+<AccordionGroup>
+  <Accordion title="Use HNSW-Indexed Fields">
+    **Fast (HNSW indexed)**:
+    - `tag_set`
+    - `num_value`
+    - `group_ids`
+    - `location` (geo filters)
+    
+    **Slower (not indexed)**:
+    - `metadata.*` (arbitrary metadata)
+    - Complex nested metadata
+    
+    **Recommendation**: Use tags for high-cardinality categorical data you filter on frequently.
+  </Accordion>
+  
+  <Accordion title="Filter Ordering">
+    Put most selective filters first in `must` conditions:
+    
+    ```javascript
+    {
+      "must": [
+        // Most selective first (reduces candidate set quickly)
+        { "field": "metadata.unique_id", "match_any": ["abc123"] },
+        { "field": "tag_set", "match_any": ["rare-tag"] },
+        // Less selective last
+        { "field": "tag_set", "match_any": ["common-tag"] }
+      ]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Avoid Overly Complex Filters">
+    Each additional condition adds overhead:
+    
+    - **Good**: 2-5 filter conditions
+    - **Acceptable**: 5-10 conditions
+    - **Slow**: 10+ conditions
+    
+    Consider restructuring data if you need many filters.
+  </Accordion>
+  
+  <Accordion title="Metadata vs Tags">
+    **Use tags when**:
+    - Filtering frequently
+    - High query volume
+    - Need fast performance
+    
+    **Use metadata when**:
+    - Complex nested data
+    - Infrequent filtering
+    - Data structure flexibility matters
+  </Accordion>
+</AccordionGroup>
+
+## Common Patterns
+
+### Faceted Search
+
+```javascript
+// Initial broad search
+const baseQuery = {
+  "search_type": "hybrid",
+  "query": "laptop"
+};
+
+// User selects facets (brand, price range, etc.)
+const withFacets = {
+  ...baseQuery,
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.brand",
+        "match_any": ["Apple", "Dell"]  // From facet selection
+      },
+      {
+        "field": "num_value",
+        "range": { "gte": 1000, "lte": 2000 }  // Price facet
+      }
+    ]
+  }
+};
+```
+
+### Multi-Tenancy
+
+```javascript
+{
+  "filters": {
+    "must": [
+      {
+        "field": "metadata.tenant_id",
+        "match_any": ["tenant-123"]
+      }
+      // ... other filters
+    ]
+  }
+}
+```
+
+### Staged Release
+
+```javascript
+{
+  "filters": {
+    "should": [
+      {
+        "field": "metadata.release_stage",
+        "match_any": ["production"]
+      },
+      {
+        // Show beta to beta users
+        "field": "metadata.release_stage",
+        "match_any": ["beta"],
+        // (Assuming user_id passed separately to determine beta access)
+      }
+    ]
+  }
+}
+```
+
+## Debugging Filters
+
+<Tabs>
+  <Tab title="Test Without Search">
+    Test filters in isolation:
+    
+    ```javascript
+    {
+      "search_type": "semantic",
+      "query": "*",  // Match everything
+      "filters": {
+        // Your filter to test
+      }
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Simplify Gradually">
+    If results seem wrong:
+    
+    1. Remove all filters - do you get results?
+    2. Add filters back one by one
+    3. Identify which filter causes issues
+  </Tab>
+  
+  <Tab title="Check Field Names">
+    Common mistakes:
+    - Forgetting `metadata.` prefix
+    - Typos in field names
+    - Wrong capitalization
+    - Using `match_any` instead of `match_all`
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Hybrid Search" icon="layer-group" href="/search/hybrid-search">
+    Combine filters with hybrid search
+  </Card>
+  <Card title="Recommendations" icon="sparkles" href="/search/recommendations">
+    Use filters in recommendations
+  </Card>
+  <Card title="Semantic Search" icon="brain" href="/search/semantic-search">
+    Apply filters to semantic search
+  </Card>
+  <Card title="Search Overview" icon="book" href="/search/overview">
+    Back to search overview
+  </Card>
+</CardGroup>

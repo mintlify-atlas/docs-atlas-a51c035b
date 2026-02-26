@@ -1,0 +1,107 @@
+---
+title: "Create Organization"
+description: "Create a new organization with the authenticated user as the default owner"
+---
+
+## Endpoint
+
+<ParamField path="method" type="string" required>
+  POST
+</ParamField>
+
+<ParamField path="url" type="string" required>
+  /api/organization
+</ParamField>
+
+## Request Body
+
+<ParamField body="name" type="string" required>
+  The arbitrary name which will be used to identify the organization. This name must be unique.
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  Unique identifier of the organization, auto-generated UUID created by Trieve
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the organization
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp of the creation of the organization
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp of the last update of the organization
+</ResponseField>
+
+<ResponseField name="deleted" type="integer">
+  Flag to indicate if the organization has been deleted. Deletes are handled async after the flag is set so as to avoid expensive search index compaction.
+</ResponseField>
+
+<ResponseField name="registerable" type="boolean">
+  Flag to indicate whether or not new users may join the organization. Default is true.
+</ResponseField>
+
+<ResponseField name="partner_configuration" type="object">
+  Configuration of the organization for the Trieve partner program. Contact partnerships@trieve.ai for more details.
+</ResponseField>
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST "https://api.trieve.ai/api/organization" \
+  -H "Authorization: Bearer <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Organization"
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "<your-api-key>"
+});
+
+const organization = await trieve.createOrganization({
+  name: "My Organization"
+});
+
+console.log("Created organization:", organization);
+```
+
+```python Python
+import requests
+
+response = requests.post(
+    "https://api.trieve.ai/api/organization",
+    headers={
+        "Authorization": "Bearer <your-api-key>",
+        "Content-Type": "application/json"
+    },
+    json={
+        "name": "My Organization"
+    }
+)
+
+organization = response.json()
+print("Created organization:", organization)
+```
+
+</CodeGroup>
+
+## Authentication
+
+Requires authentication with an API key that has at least `readonly` role.
+
+## Notes
+
+- The authenticated user who creates the organization will be the default owner
+- Organization names must be unique across the platform
+- The created organization will have default settings that can be updated later

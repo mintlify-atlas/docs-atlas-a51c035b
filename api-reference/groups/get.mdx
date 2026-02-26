@@ -1,0 +1,136 @@
+---
+title: 'Get Group'
+description: 'Retrieve a specific chunk group by its ID'
+---
+
+## GET /chunk_group/{group_id}
+
+Fetch the group with the given id.
+
+### Headers
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="Authorization" type="string" required>
+  Your API key for authentication. Must have readonly role or higher.
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="group_id" type="string" required>
+  Id of the group you want to fetch.
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="string">
+  The unique identifier for the chunk_group.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The name of the chunk_group.
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The description of the chunk_group.
+</ResponseField>
+
+<ResponseField name="tracking_id" type="string">
+  The tracking id of the chunk_group.
+</ResponseField>
+
+<ResponseField name="tag_set" type="array">
+  The tags assigned to the chunk_group.
+</ResponseField>
+
+<ResponseField name="metadata" type="object">
+  The metadata associated with the chunk_group.
+</ResponseField>
+
+<ResponseField name="dataset_id" type="string">
+  The dataset id this chunk_group belongs to.
+</ResponseField>
+
+<ResponseField name="file_id" type="string">
+  The file id associated with the chunk_group, if any.
+</ResponseField>
+
+<ResponseField name="created_at" type="string">
+  Timestamp when the chunk_group was created.
+</ResponseField>
+
+<ResponseField name="updated_at" type="string">
+  Timestamp when the chunk_group was last updated.
+</ResponseField>
+
+<RequestExample>
+
+```bash cURL
+curl -X GET "https://api.trieve.ai/api/chunk_group/3c90c3cc-0d44-4b50-8888-8dd25736052a" \
+  -H "Authorization: Bearer tr-********************************" \
+  -H "TR-Dataset: d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "tr-********************************",
+  datasetId: "d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+});
+
+const group = await trieve.getChunkGroup({
+  group_id: "3c90c3cc-0d44-4b50-8888-8dd25736052a"
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+    api_key="tr-********************************",
+    dataset_id="d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a"
+)
+
+group = trieve.get_chunk_group(
+    group_id="3c90c3cc-0d44-4b50-8888-8dd25736052a"
+)
+```
+
+</RequestExample>
+
+<ResponseExample>
+
+```json 200 Success
+{
+  "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+  "name": "Versions of Oversized T-Shirt",
+  "description": "All versions and colorways of the oversized t-shirt",
+  "tracking_id": "SNOVERSIZEDTSHIRT",
+  "tag_set": ["tshirt", "oversized", "clothing"],
+  "metadata": {
+    "color": "black",
+    "size": "large"
+  },
+  "dataset_id": "d1c31e8e-0a6a-4b45-b6c7-8c4f9d9e0a1a",
+  "file_id": null,
+  "created_at": "2021-01-01 00:00:00.000",
+  "updated_at": "2021-01-01 00:00:00.000"
+}
+```
+
+```json 400 Bad Request
+{
+  "message": "Service error relating to getting the group with the given tracking id"
+}
+```
+
+```json 404 Not Found
+{
+  "message": "Group not found"
+}
+```
+
+</ResponseExample>

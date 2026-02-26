@@ -1,0 +1,278 @@
+---
+title: "Autocomplete"
+description: "Autocomplete search prioritizes prefix matching with semantic or full-text search. Perfect for building search-as-you-type experiences."
+---
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.trieve.ai/api/chunk/autocomplete \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "TR-Dataset: YOUR_DATASET_ID" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "how to cre",
+    "search_type": "hybrid",
+    "page_size": 5,
+    "filters": {
+      "must": [
+        {
+          "field": "tag_set",
+          "match": ["documentation"]
+        }
+      ]
+    },
+    "highlight_options": {
+      "highlight_delimiters": ["<mark>", "</mark>"]
+    },
+    "extend_results": true
+  }'
+```
+
+```typescript TypeScript SDK
+import { TrieveSDK } from "trieve-ts-sdk";
+
+const trieve = new TrieveSDK({
+  apiKey: "YOUR_API_KEY",
+  datasetId: "YOUR_DATASET_ID"
+});
+
+const results = await trieve.autocomplete({
+  query: "how to cre",
+  search_type: "hybrid",
+  page_size: 5,
+  filters: {
+    must: [
+      {
+        field: "tag_set",
+        match: ["documentation"]
+      }
+    ]
+  },
+  highlight_options: {
+    highlight_delimiters: ["<mark>", "</mark>"]
+  },
+  extend_results: true
+});
+```
+
+```python Python SDK
+from trieve_py_client import TrieveSDK
+
+trieve = TrieveSDK(
+  api_key="YOUR_API_KEY",
+  dataset_id="YOUR_DATASET_ID"
+)
+
+results = trieve.autocomplete(
+  query="how to cre",
+  search_type="hybrid",
+  page_size=5,
+  filters={
+    "must": [
+      {
+        "field": "tag_set",
+        "match": ["documentation"]
+      }
+    ]
+  },
+  highlight_options={
+    "highlight_delimiters": ["<mark>", "</mark>"]
+  },
+  extend_results=True
+)
+```
+</RequestExample>
+
+## Method and Path
+
+<CodeGroup>
+```http
+POST /api/chunk/autocomplete
+```
+</CodeGroup>
+
+## Authentication
+
+Requires API key with **readonly** role or higher for the specified dataset's organization.
+
+## Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication
+</ParamField>
+
+<ParamField header="TR-Dataset" type="string" required>
+  The dataset id or tracking_id to use for the request. We assume you intend to use an id if the value is a valid uuid.
+</ParamField>
+
+<ParamField header="X-API-Version" type="string" optional>
+  The API version to use for this request. Defaults to V2 for orgs created after July 12, 2024 and V1 otherwise.
+</ParamField>
+
+## Request Body
+
+<ParamField body="query" type="string" required>
+  The partial search query text for autocomplete
+</ParamField>
+
+<ParamField body="search_type" type="string" required>
+  Type of search to perform. Options: `semantic`, `fulltext`, `hybrid`
+</ParamField>
+
+<ParamField body="page_size" type="number" optional default="10">
+  Number of results to return (max 100)
+</ParamField>
+
+<ParamField body="extend_results" type="boolean" optional default="false">
+  If true, semantic or full-text search will be performed if no prefix matches are found
+</ParamField>
+
+<ParamField body="filters" type="object" optional>
+  Filters to apply to the autocomplete results
+  <Expandable title="Filter Structure">
+    <ParamField body="must" type="array" optional>
+      All conditions in this array must be met
+    </ParamField>
+    <ParamField body="should" type="array" optional>
+      At least one condition in this array must be met
+    </ParamField>
+    <ParamField body="must_not" type="array" optional>
+      None of the conditions in this array can be met
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="score_threshold" type="number" optional>
+  Minimum score threshold for results (0.0 to 1.0)
+</ParamField>
+
+<ParamField body="slim_chunks" type="boolean" optional default="false">
+  Return minimal chunk data for faster response
+</ParamField>
+
+<ParamField body="highlight_options" type="object" optional>
+  Options for highlighting matched text in results
+  <Expandable title="properties">
+    <ParamField body="highlight_delimiters" type="array" optional>
+      Array with two strings: opening and closing tags for highlights. Default: ["<mark><b>", "</b></mark>"]
+    </ParamField>
+    <ParamField body="highlight_results" type="boolean" optional default="true">
+      Whether to highlight results
+    </ParamField>
+    <ParamField body="highlight_max_length" type="number" optional>
+      Maximum length of highlighted text
+    </ParamField>
+    <ParamField body="highlight_max_num" type="number" optional>
+      Maximum number of highlights per chunk
+    </ParamField>
+    <ParamField body="highlight_window" type="number" optional>
+      Number of words to include around the highlight
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="sort_options" type="object" optional>
+  Options for sorting results
+  <Expandable title="properties">
+    <ParamField body="sort_by" type="string" optional>
+      Field to sort by. Options: `num_value`, `time_stamp`, `metadata.{key}`
+    </ParamField>
+    <ParamField body="order" type="string" optional>
+      Sort order. Options: `asc`, `desc`
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="typo_options" type="object" optional>
+  Options for typo tolerance in fulltext search
+  <Expandable title="properties">
+    <ParamField body="correct_typos" type="boolean" optional default="true">
+      Enable typo correction
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+<ParamField body="recency_bias" type="number" optional>
+  Bias recent chunks higher in results (0.0 to 1.0)
+</ParamField>
+
+<ParamField body="use_quote_negated_terms" type="boolean" optional default="false">
+  Parse special operators like quotes and minus signs in the query
+</ParamField>
+
+<ParamField body="scoring_options" type="object" optional>
+  Options to modify query vector scoring
+  <Expandable title="properties">
+    <ParamField body="fulltext_boost" type="object" optional>
+      Boost phrases in fulltext search
+    </ParamField>
+    <ParamField body="semantic_boost" type="object" optional>
+      Move query vector toward specified phrase
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+<ResponseField name="chunks" type="array">
+  Array of matching chunks
+  <Expandable title="Chunk Object">
+    <ResponseField name="chunk" type="object">
+      <Expandable title="properties">
+        <ResponseField name="id" type="string">
+          Unique identifier for the chunk
+        </ResponseField>
+        <ResponseField name="chunk_html" type="string">
+          HTML content with highlighting applied
+        </ResponseField>
+        <ResponseField name="link" type="string">
+          Link associated with the chunk
+        </ResponseField>
+        <ResponseField name="tag_set" type="array">
+          Tags associated with the chunk
+        </ResponseField>
+        <ResponseField name="metadata" type="object">
+          Metadata object
+        </ResponseField>
+        <ResponseField name="tracking_id" type="string">
+          Tracking ID
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="score" type="number">
+      Relevance score (0.0 to 1.0)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Status Codes
+
+<ResponseField name="200" type="Success">
+  Autocomplete results returned successfully
+</ResponseField>
+
+<ResponseField name="400" type="Error">
+  Service error relating to autocomplete (invalid parameters, etc.)
+</ResponseField>
+
+## How Autocomplete Works
+
+1. **Prefix Matching**: First attempts to find chunks where words start with the query text
+2. **Extended Search**: If `extend_results` is true and no prefix matches are found, falls back to semantic or full-text search
+3. **Highlighting**: Results are highlighted to show where matches occur
+4. **Performance**: Optimized for low-latency responses suitable for real-time search-as-you-type
+
+## Use Cases
+
+- **Search bars**: Build responsive search-as-you-type experiences
+- **Command palettes**: Quick navigation and command completion
+- **Tag suggestions**: Suggest tags as users type
+- **Entity completion**: Auto-complete entity names, products, or categories
+
+## Best Practices
+
+- Use `page_size` of 5-10 for typical autocomplete dropdowns
+- Set `slim_chunks: true` for faster response times
+- Enable `extend_results` to provide fallback results
+- Use `highlight_options` to emphasize matched portions
+- Consider adding debouncing on the client side to reduce API calls
